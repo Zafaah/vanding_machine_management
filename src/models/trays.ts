@@ -1,34 +1,34 @@
-import { Timestamped, EntityRelations } from "../types/types";
-import mongoose from "mongoose";
+import mongoose, { Document } from "mongoose";
 
-export interface Trays extends Timestamped, EntityRelations {
-    machineId:mongoose.Schema.Types.ObjectId,
-    name:String,
-    slots:mongoose.Schema.Types.ObjectId[]
+export interface Trays extends Document {
+    machineId: mongoose.Schema.Types.ObjectId,
+    name: String,
+    slot: mongoose.Schema.Types.ObjectId[]
 }
 
-const TraysSchema=new mongoose.Schema<Trays>({
-    name:{
-        type:String,
-        required:[true, 'name is required'],
-        lowercase:true,
-        trim:true,
+const TraysSchema = new mongoose.Schema<Trays>({
+    name: {
+        type: String,
+        required: [true, 'name is required'],
+        unique: true,
+        lowercase: true,
+        trim: true,
     },
-    machineId:{
-        type:mongoose.Schema.Types.ObjectId,
-        required:[true,'machineId is required'],
-        ref:'VendingMachine'
+    machineId: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: [true, 'machineId is required'],
+        ref: 'VendingMachine'
     },
-    slots:{
-        type:[mongoose.Schema.Types.ObjectId],
-        required:[true,'slots is required'],
-        ref:'Slot'
+    slot: {
+        type: [mongoose.Schema.Types.ObjectId],
+        default: [],
+        ref: 'slot'
     }
-},{
-    timestamps:true,
-    versionKey:false
+}, {
+    timestamps: true,
+    versionKey: false
 })
 
-const Trays=mongoose.model<Trays>('Tray',TraysSchema)
+const Trays = mongoose.model<Trays>('Tray', TraysSchema)
 
 export default Trays

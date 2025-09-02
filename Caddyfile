@@ -1,0 +1,11 @@
+localhost {
+    encode zstd gzip
+    tls internal
+    # Forward all /api requests to the app container
+    reverse_proxy /api/* vending_app:8000
+
+    log {
+        output stdout
+        format json
+    }
+}

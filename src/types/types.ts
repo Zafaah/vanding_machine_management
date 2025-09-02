@@ -1,40 +1,47 @@
+import {  Types, Document } from 'mongoose';
 
-export enum machineType{
-    SLOT= 'slot',
-    COFFEE= 'coffee',
-    COMBO= 'combo',
-    
+export enum machineType {
+  SLOT = 'slot', 
+  COFFEE = 'coffee',
+  COMBO = 'combo',
 }
 
 export enum MachineStatus {
-    ACTIVE = 'active',
-    MAINTENANCE = 'maintenance',
-    OUT_OF_SERVICE = 'out_of_service'
-  }
-  
-  export enum UnitOfMeasure {
-    ML = 'ml',
-    GRAMS = 'grams',
-    PUMPS = 'pumps',
-    ITEMS = 'items'
-  }
-  
-  export enum AuditAction {
-    MACHINE_CREATED = 'MACHINE_CREATED',
-    MACHINE_UPDATED = 'MACHINE_UPDATED',
-    SKU_SOLD = 'SKU_SOLD',
-    INGREDIENT_CONSUMED = 'INGREDIENT_CONSUMED',
-    CANISTER_REFILLED = 'CANISTER_REFILLED',
-    RECIPE_OUT_OF_STOCK = 'RECIPE_OUT_OF_STOCK'
-  }
-  
-  /* ======= CORE INTERFACES ======= */
-  export interface Timestamped {
-    createdAt: Date;
-    updatedAt: Date;
-  }
-  
-  export interface EntityRelations {
-    id: string;
-    _id: string;
-  }
+  ACTIVE = 'active',
+  MAINTENANCE = 'maintenance',
+  OUT_OF_SERVICE = 'out_of_service'
+}
+
+export enum UnitOfMeasure {
+  ML = 'ml',
+  GRAMS = 'grams',
+  PUMPS = 'pumps',
+  ITEMS = 'items'
+}
+
+export enum AuditAction {
+  MACHINE_CREATED = 'MACHINE_CREATED',
+  MACHINE_UPDATED = 'MACHINE_UPDATED',
+  SKU_CREATED = 'SKU_CREATED',
+  SKU_UPDATED = 'SKU_UPDATED',
+  SKU_DELETED = 'SKU_DELETED',
+  SKU_SOLD = 'SKU_SOLD',
+  SKU_RESTOCKED = 'SKU_RESTOCKED',
+  INGREDIENT_CREATED = 'INGREDIENT_CREATED',
+  INGREDIENT_UPDATED = 'INGREDIENT_UPDATED',
+  INGREDIENT_DELETED = 'INGREDIENT_DELETED',
+  INGREDIENT_CONSUMED = 'INGREDIENT_CONSUMED',
+  INGREDIENT_REFILLED = 'INGREDIENT_REFILLED',
+  CANISTER_REFILLED = 'CANISTER_REFILLED',
+  RECIPE_CREATED = 'RECIPE_CREATED',
+  RECIPE_UPDATED = 'RECIPE_UPDATED',
+  RECIPE_DELETED = 'RECIPE_DELETED',
+  RECIPE_OUT_OF_STOCK = 'RECIPE_OUT_OF_STOCK'
+}
+
+export interface RecipeIngredient extends Document {
+  ingredientId: Types.ObjectId;
+  quantity: number;
+  unit: UnitOfMeasure;
+  _id: Types.ObjectId;
+}

@@ -1,13 +1,10 @@
-
-import mongoose from "mongoose";
-import { Timestamped ,EntityRelations,UnitOfMeasure } from "../types/types";
+import mongoose, { Document } from "mongoose";
 import AuditLog from "./auditLOg";
 import { AuditAction } from "../types/types";
-export interface SKUProduct extends Timestamped, EntityRelations {
+export interface SKUProduct extends Document {
     name:String,
-    price: number,
-    unitOfMeasure:UnitOfMeasure,
-    quantity?:number    
+    price: number
+    quantity:number    
 };
 
 const SKUProductSchema=new mongoose.Schema<SKUProduct>({
@@ -20,11 +17,6 @@ const SKUProductSchema=new mongoose.Schema<SKUProduct>({
     price:{
         type:Number,
         required:[true,'price is required']
-    },
-    unitOfMeasure:{
-        type:String,
-        enum: Object.values(UnitOfMeasure),
-        required:[true,'unitOfMeasure is required']
     },
     quantity:{
         type:Number,
@@ -40,7 +32,6 @@ SKUProductSchema.methods.logSale= async function( quantity:number){
         action: AuditAction.SKU_SOLD,
         skuId: this._id,
         quantity: quantity,
-        unit: this.unitOfMeasure,
         previousValue: this.quantity,
         newValue: this.quantity - quantity,
         userId: 'system'

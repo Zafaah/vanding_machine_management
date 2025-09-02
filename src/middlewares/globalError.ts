@@ -1,4 +1,5 @@
 import AppError from "../utils/appError";
+import { sendError } from "../utils/apiResponse";
 import { Request, Response, NextFunction } from 'express';
 import logger from '../logging/logger';
 export const globalError=(
@@ -27,10 +28,7 @@ export const globalError=(
         url: req.originalUrl,
     })
 
-    res.status(statusCode).json({
-        status:status,
-        message:message,
-        stack:err.stack
-    })
+    sendError(res, message,statusCode,err.status,err.message, err.stack)
+   
 
 }

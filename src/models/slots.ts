@@ -1,9 +1,8 @@
-import { Timestamped, EntityRelations } from "../types/types";
-import mongoose from "mongoose";
+import mongoose, { Document } from "mongoose";
 
-export interface Slots extends Timestamped, EntityRelations {
+export interface Slots extends Document {
     trayId:mongoose.Schema.Types.ObjectId,
-    skuId:mongoose.Schema.Types.ObjectId,
+    skuId:mongoose.Schema.Types.ObjectId[],
     quantityOnhand:number
 }
 
@@ -14,8 +13,8 @@ const SlotsSchema=new mongoose.Schema<Slots>({
         ref:'Tray'
     },
     skuId:{
-        type:mongoose.Schema.Types.ObjectId,
-        required:[true,'skuId is required'],
+        type:[mongoose.Schema.Types.ObjectId],
+        default:[],
         ref:'SKUProduct'
     },
     quantityOnhand:{
@@ -27,7 +26,7 @@ const SlotsSchema=new mongoose.Schema<Slots>({
     versionKey:false
 })
 
-SlotsSchema.index({ trayId: 1, skuId: 1 }, { unique: true });
+SlotsSchema.index({ trayId: 1, skuId: 1 }, { unique: false });
 
 const Slots=mongoose.model<Slots>('Slot',SlotsSchema)
 

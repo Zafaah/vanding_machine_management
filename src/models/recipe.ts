@@ -1,19 +1,15 @@
-import mongoose from "mongoose";
-import { Timestamped, EntityRelations } from "../types/types";
+import mongoose, { Document } from "mongoose";
+import { RecipeIngredient } from "../types/types";
 import { AuditAction } from "../types/types";
 import AuditLog from "./auditLOg";
 
-interface RecipeIngredient {
-    ingredientId: mongoose.Schema.Types.ObjectId;
-    amount: number;
-}
-
-export interface Recipe extends Timestamped, EntityRelations {
+export interface Recipe extends Document {
     name: string;
     ingredients: RecipeIngredient[];
     price: number;
     isAvailable: boolean;
     machineId: mongoose.Schema.Types.ObjectId;
+    checkAvailability(): Promise<boolean>;
 }
 
 const RecipeSchema = new mongoose.Schema<Recipe>({
@@ -29,9 +25,9 @@ const RecipeSchema = new mongoose.Schema<Recipe>({
             ref: 'Ingredient',
             required: [true, 'ingredientId is required']
         },
-        amount: {
+        quantity: {
             type: Number,
-            required: [true, 'amount is required']
+            required: [true, 'quantity is required']
         }
     }],
     price: {
@@ -59,7 +55,7 @@ RecipeSchema.pre('save', async function(next) {
     const ingredients = await Promise.all(
         this.ingredients.map(async (ingredient) => {
             const stock = await mongoose.model('Ingredient').findById(ingredient.ingredientId);
-            return stock?.stockLevel >= ingredient.amount;
+            return stock?.stockLevel >= ingredient.quantity;
         })
     );
 
@@ -82,7 +78,7 @@ RecipeSchema.methods.checkAvailability = async function() {
     const ingredients = await Promise.all(
         this.ingredients.map(async (ingredient:RecipeIngredient) => {
             const stock = await mongoose.model('Ingredient').findById(ingredient.ingredientId);
-            return stock?.stockLevel >= ingredient.amount;
+            return stock?.stockLevel >= ingredient.quantity;
         })
     );
 
