@@ -53,7 +53,23 @@ export const createTrays = catchAsync(async (req: Request, res: Response, next: 
 
 export const getAllTrays = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
    const results = await paginateAndSearch(Trays, req, "name");
-   sendSuccess(res, "Trays retrieved successfully", results);
+
+   if (results && Array.isArray(results.results)) {
+      
+      results.results = await Trays.populate(results.results, [
+         {
+            path: "slot",
+            populate: { path: "skuId" }
+         }
+      ]);
+
+      return sendSuccess(res, "Trays retrieved successfully", results);
+   }
+   const populated = await Trays.populate(results, [
+      { path: "slot" },
+   ]);
+
+   sendSuccess(res, "Trays retrieved successfully", populated);
 });
 
 export const getTrayById = catchAsync(async (req: Request, res: Response, next: NextFunction) => {

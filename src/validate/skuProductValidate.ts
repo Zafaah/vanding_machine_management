@@ -1,5 +1,4 @@
 import Joi from "joi";
-import { UnitOfMeasure } from "../types/types";
 
   export const skuProductValidate = Joi.object({
     name: Joi.string().trim().required().messages({
@@ -11,19 +10,13 @@ import { UnitOfMeasure } from "../types/types";
       'number.min': 'Price cannot be negative',
       'any.required': 'Price is required',
     }),
-    unitOfMeasure: Joi.string()
-      .valid(...Object.values(UnitOfMeasure))
-      .required()
-      .messages({
-        'any.only': `Unit of measure must be one of: ${Object.values(UnitOfMeasure).join(', ')}`,
-        'any.required': 'Unit of measure is required',
-      }),
     quantity: Joi.number().integer().min(0).default(0).messages({
       'number.base': 'Quantity must be a number',
       'number.integer': 'Quantity must be an integer',
       'number.min': 'Quantity cannot be negative',
     }),
   });
-  
 
-  
+  export const validateSKUProduct = (data: any) => {
+    return skuProductValidate.validate(data, { abortEarly: false });
+  };

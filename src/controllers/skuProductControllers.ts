@@ -9,10 +9,10 @@ import { paginateAndSearch } from "../utils/apiFeatures";
 
 // Create a new SKU Product
 export const createSKUProduct = catchAsync(async (req: Request, res: Response) => {
-    const { name, price, unitOfMeasure, quantity = 0 } = req.body;
+    const { name, price, quantity = 0 } = req.body;
 
-    if (!name || !price || !unitOfMeasure) {
-        return sendError(res, "Name, price, and unitOfMeasure are required", 400);
+    if (!name || !price) {
+        return sendError(res, "Name and price are required", 400);
     }
 
     // Check for existing SKU with same name (case insensitive)
@@ -32,7 +32,6 @@ export const createSKUProduct = catchAsync(async (req: Request, res: Response) =
 
     logger.info(`SKU Product created with ID: ${skuProduct._id}`);
 
-    // Log the creation in audit log
     await AuditLog.create({
         action: AuditAction.SKU_CREATED,
         skuId: skuProduct._id,

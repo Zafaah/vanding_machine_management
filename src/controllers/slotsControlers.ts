@@ -3,6 +3,9 @@ import catchAsync from "../middlewares/catchasync";
 import { sendSuccess, sendError } from "../utils/apiResponse";
 import logger from "../logging/logger";
 import { Request, Response, NextFunction } from "express";
+import { paginateAndSearch } from "../utils/apiFeatures";
+import Trays from "../models/trays";
+import auditLOg from "../models/auditLOg";
 
 // Create Slot
 export const createSlot = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
@@ -18,13 +21,29 @@ export const createSlot = catchAsync(async (req: Request, res: Response, next: N
     }
 
     const slot = await Slots.create({ trayId, skuId, quantityOnhand });
+
+    await Trays.findByIdAndUpdate(trayId, { $push: { slot: slot._id } });
+
+    await slot.populate("skuId");
+
     logger.info(`Slot created with ID: ${slot._id}`);
+    
+    await auditLOg.create({
+        action: 'SLOT_CREATED',
+        model: "slots",
+        machineId: trayId,
+        userId: 'system',
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+        meta: { slotId: slot._id, trayId, skuId }
+    })
+
     sendSuccess(res, "Slot created successfully", slot, 201);
 });
 
 // Get all slots
 export const getAllSlots = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-    const slots = await Slots.find().populate("trayId").populate("skuId");
+    const slots = await paginateAndSearch(Slots,req,"trayId");
     sendSuccess(res, "Slots retrieved successfully", slots);
 });
 
@@ -43,7 +62,6 @@ export const updateSlot = catchAsync(async (req: Request, res: Response, next: N
     const { id } = req.params;
     const { trayId, skuId, quantityOnhand } = req.body;
 
-    // Prevent duplicate slot for same trayId and skuId (if updating these fields)
     if (trayId && skuId) {
         const existing = await Slots.findOne({ trayId, skuId, _id: { $ne: id } });
         if (existing) {

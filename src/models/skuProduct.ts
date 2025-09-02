@@ -38,6 +38,6 @@ SKUProductSchema.methods.logSale= async function( quantity:number){
     })
 }
 
-const SKUProduct = mongoose.model('SKUProduct',SKUProductSchema)
+const SKUProduct = mongoose.model('SKUProducts',SKUProductSchema)
  
 export default SKUProduct

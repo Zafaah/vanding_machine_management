@@ -3,6 +3,7 @@ import { machineType, MachineStatus } from "../types/types";
 
 
 export interface IVendingMachine extends Document {
+    _id: mongoose.Types.ObjectId;
     updatedAt: any;
     createdAt: any;
     name: string;

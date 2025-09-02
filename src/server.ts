@@ -11,6 +11,7 @@ import traysRouter from './routes/traysRoute';
 import conisterRoute from './routes/conistersRoute';
 import vendingRouter from './routes/vendingRoute';
 import slotsRouter from './routes/slotsRoute';
+import skuProductRoute from './routes/skuProductRoute';
 const app = express();
 app.use(express.json());
 // Log all incoming requests
@@ -27,6 +28,7 @@ app.use('/api/trays', traysRouter);
 app.use('/api/conisters', conisterRoute);
 app.use('/api/vending', vendingRouter);
 app.use('/api/slots', slotsRouter);
+app.use('/api/sku', skuProductRoute);
 
 app.all('*', (req: Request, res: Response, next: NextFunction) => {
    next(new AppError(`can not find ${req.originalUrl} on this server`, 404))

@@ -22,7 +22,7 @@ const TraysSchema = new mongoose.Schema<Trays>({
     slot: {
         type: [mongoose.Schema.Types.ObjectId],
         default: [],
-        ref: 'slot'
+        ref: 'Slot'
     }
 }, {
     timestamps: true,
