@@ -1,42 +1,42 @@
-import mongoose, { Document } from "mongoose";
+import mongoose, { Document, ObjectId } from "mongoose";
 import AuditLog from "./auditLOg";
 import { AuditAction } from "../types/types";
 export interface SKUProduct extends Document {
-    name:String,
-    price: number
-    quantity:number    
+    productId: string;
+    name: String;
+    description?: string;
+    price: number;
 };
 
-const SKUProductSchema=new mongoose.Schema<SKUProduct>({
-    name:{
-        type:String,
-        required:[true,'name is required'],
-        trim:true,
-        unique:true
+const SKUProductSchema = new mongoose.Schema<SKUProduct>({
+    productId: {
+        type: String,
+        required: [true, 'productId is required'],
+        trim: true,
+        unique: true
     },
-    price:{
-        type:Number,
-        required:[true,'price is required']
+    name: {
+        type: String,
+        required: [true, 'name is required'],
+        trim: true,
+        unique: true
     },
-    quantity:{
-        type:Number,
-        required:[true,'quantity is required']
-    }
-},{
-    timestamps:true,
-    versionKey:false
+    description: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    price: {
+        type: Number,
+        required: [true,'price is required']
+    },
+    
+}, {
+    timestamps: true,
+    versionKey: false
 })
 
-SKUProductSchema.methods.logSale= async function( quantity:number){
-    await AuditLog.create({
-        action: AuditAction.SKU_SOLD,
-        skuId: this._id,
-        quantity: quantity,
-        previousValue: this.quantity,
-        newValue: this.quantity - quantity,
-        userId: 'system'
-    })
-}
+// No per-SKU quantity here; quantity is tracked per slot in SlotInventory
 
 const SKUProduct = mongoose.model('SKUProducts',SKUProductSchema)
  

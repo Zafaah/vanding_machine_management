@@ -9,6 +9,7 @@ import auditLOg from "../models/auditLOg";
 import { Request,Response } from "express";
 import { paginateAndSearch } from "../utils/apiFeatures";
 import { sendError } from "../utils/apiResponse";
+import mongoose from "mongoose";
 
 
 export const createCanister = catchAsync(async (req: Request, res: Response) => {
@@ -110,4 +111,118 @@ export const deleteCanister= catchAsync(async(req:Request,res:Response)=>{
    }
    await canister.populate('ingredientId');
    sendSuccess(res,"Canister deleted successfully",canister);
+});
+
+// Assign an ingredient to a canister (replaces existing assignment)
+export const assignIngredientToCanister = catchAsync(async (req: Request, res: Response) => {
+   const { id } = req.params;
+   const { ingredientId } = req.body;
+
+   if (!ingredientId) return sendError(res, "ingredientId is required", 400);
+
+   const canister = await Canister.findById(id);
+   if (!canister) return sendError(res, "Canister not found", 404);
+
+   // Only one ingredient per canister; store as single-element array to respect schema
+   canister.ingredientId = [ingredientId] as any;
+   await canister.save();
+   await canister.populate('ingredientId');
+
+   return sendSuccess(res, "Ingredient assigned to canister", canister, 200);
+});
+
+// Refill a canister up to its capacity atomically (cap at capacity)
+export const refillCanister = catchAsync(async (req: Request, res: Response) => {
+   const { id } = req.params;
+   const amount = Number(req.body.amount);
+   if (!amount || amount <= 0) return sendError(res, "amount must be a positive number", 400);
+
+   // Use a retry-safe optimistic update to compute delta and avoid race conditions
+   for (let attempt = 0; attempt < 2; attempt++) {
+      const doc = await Canister.findById(id);
+      if (!doc) return sendError(res, "Canister not found", 404);
+
+      const previousLevel = doc.currentLevel;
+      const capacity = doc.capacity;
+      if (previousLevel >= capacity) {
+         return sendSuccess(res, "Canister already full", doc, 200);
+      }
+      const room = capacity - previousLevel;
+      const add = Math.min(room, amount);
+
+      const updated = await Canister.findOneAndUpdate(
+         { _id: id, currentLevel: previousLevel },
+         { $inc: { currentLevel: add } },
+         { new: true }
+      );
+      if (updated) {
+         await auditLOg.create({
+            action: AuditAction.CANISTER_REFILLED,
+            machineId: updated.machineId,
+            canisterId: updated._id as any,
+            quantity: add,
+            unit: (updated as any).ingredientId?.length ? undefined : undefined,
+            previousValue: previousLevel,
+            newValue: updated.currentLevel,
+            userId: 'system',
+         });
+         await updated.populate('ingredientId');
+         return sendSuccess(res, "Canister refilled", updated, 200);
+      }
+      // concurrent update happened, retry once
+   }
+   return sendError(res, "Could not refill canister due to concurrent updates. Please retry.", 409);
+});
+
+// Consume from multiple canisters atomically for a coffee sale
+// Body: { machineId, consumptions: [{ canisterId, amount }] }
+export const consumeCanistersForSale = catchAsync(async (req: Request, res: Response) => {
+   const { machineId, consumptions } = req.body as { machineId: string, consumptions: Array<{ canisterId: string, amount: number }> };
+   if (!machineId || !Array.isArray(consumptions) || consumptions.length === 0) {
+      return sendError(res, "machineId and consumptions are required", 400);
+   }
+
+   const session = await mongoose.startSession();
+   try {
+      await session.withTransaction(async () => {
+         // Validate all first
+         const canisterIds = consumptions.map(c => c.canisterId);
+         const canisters = await Canister.find({ _id: { $in: canisterIds }, machineId }).session(session);
+         const canisterMap = new Map(canisters.map(c => [String(c._id), c]));
+
+         for (const { canisterId, amount } of consumptions) {
+            if (!amount || amount <= 0) throw new Error("Invalid amount in consumptions");
+            const c = canisterMap.get(String(canisterId));
+            if (!c) throw new Error("Canister not found or not in machine");
+            if (c.currentLevel < amount) throw new Error("Insufficient canister level");
+         }
+
+         // Decrement each
+         for (const { canisterId, amount } of consumptions) {
+            const updated = await Canister.findOneAndUpdate(
+               { _id: canisterId, machineId, currentLevel: { $gte: amount } },
+               { $inc: { currentLevel: -amount } },
+               { new: true, session }
+            );
+            if (!updated) throw new Error("Concurrent update detected");
+
+            await auditLOg.create({
+               action: AuditAction.INGREDIENT_CONSUMED,
+               machineId: updated.machineId,
+               ingredientId: (updated as any).ingredientId?.[0],
+               quantity: amount,
+               unit: undefined,
+               previousValue: updated.currentLevel + amount,
+               newValue: updated.currentLevel,
+               userId: 'system',
+            });
+         }
+      });
+
+      return sendSuccess(res, "Coffee sale processed", null, 200);
+   } catch (err: any) {
+      return sendError(res, err.message || "Failed to process sale", 400);
+   } finally {
+      await session.endSession();
+   }
 });

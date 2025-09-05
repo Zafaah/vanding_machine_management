@@ -6,18 +6,22 @@ import logger from "../logging/logger";
 import AuditLog from "../models/auditLOg";
 import { AuditAction } from "../types/types";
 import { paginateAndSearch } from "../utils/apiFeatures";
+import Slots from "../models/slots";
 
 // Create a new SKU Product
 export const createSKUProduct = catchAsync(async (req: Request, res: Response) => {
-    const { name, price, quantity = 0 } = req.body;
+    const { productId, name, description = '', price } = req.body;
 
-    if (!name || !price) {
-        return sendError(res, "Name and price are required", 400);
+    if (!productId || !name || price === undefined) {
+        return sendError(res, "productId, name and price are required", 400);
     }
 
     // Check for existing SKU with same name (case insensitive)
     const existingSKU = await SKUProduct.findOne({ 
-        name: { $regex: new RegExp(`^${name}$`, 'i') } 
+        $or: [
+            { name: { $regex: new RegExp(`^${name}$`, 'i') } },
+            { productId: productId }
+        ]
     });
     
     if (existingSKU) {
@@ -25,9 +29,10 @@ export const createSKUProduct = catchAsync(async (req: Request, res: Response) =
     }
 
     const skuProduct = await SKUProduct.create({
+        productId,
         name,
-        price,
-        quantity
+        description,
+        price
     });
 
     logger.info(`SKU Product created with ID: ${skuProduct._id}`);
@@ -36,7 +41,7 @@ export const createSKUProduct = catchAsync(async (req: Request, res: Response) =
         action: AuditAction.SKU_CREATED,
         skuId: skuProduct._id,
         previousValue: null,
-        newValue: skuProduct.quantity,
+        newValue: { productId, name, price },
         userId: 'system'
     });
 
@@ -61,7 +66,7 @@ export const getSKUProductById = catchAsync(async (req: Request, res: Response) 
 // Update an existing SKU Product
 export const updateSKUProduct = catchAsync(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const { name, price, unitOfMeasure, quantity } = req.body;
+    const { productId, name, description, price } = req.body;
 
     const skuProduct = await SKUProduct.findById(id);
     if (!skuProduct) {
@@ -69,35 +74,32 @@ export const updateSKUProduct = catchAsync(async (req: Request, res: Response) =
     }
 
     // Check for name conflict if name is being updated
-    if (name && name !== skuProduct.name) {
+    if ((name && name !== skuProduct.name) || (productId && productId !== skuProduct.productId)) {
         const existingSKU = await SKUProduct.findOne({ 
             _id: { $ne: id },
-            name: { $regex: new RegExp(`^${name}$`, 'i') }
+            $or: [
+                name ? { name: { $regex: new RegExp(`^${name}$`, 'i') } } : undefined,
+                productId ? { productId } : undefined
+            ].filter(Boolean) as any
         });
         if (existingSKU) {
-            return sendError(res, "Another SKU with this name already exists", 409);
+            return sendError(res, "Another SKU with same name or productId exists", 409);
         }
     }
-
-    const previousQuantity = skuProduct.quantity;
     
     // Update the SKU Product
     const updatedSKU = await SKUProduct.findByIdAndUpdate(
         id,
-        { name, price, unitOfMeasure, quantity },
+        { productId, name, description, price },
         { new: true, runValidators: true }
     );
-
-    // Log quantity change in audit log if quantity was updated
-    if (quantity !== undefined && quantity !== previousQuantity) {
-        await AuditLog.create({
-            action: AuditAction.SKU_UPDATED,
-            skuId: id,
-            previousValue: previousQuantity,
-            newValue: quantity,
-            userId: 'system'
-        });
-    }
+    await AuditLog.create({
+        action: AuditAction.SKU_UPDATED,
+        skuId: id,
+        previousValue: null,
+        newValue: { productId, name, description, price },
+        userId: 'system'
+    });
 
     logger.info(`SKU Product updated with ID: ${id}`);
     sendSuccess(res, "SKU Product updated successfully", updatedSKU);
@@ -114,7 +116,7 @@ export const deleteSKUProduct = catchAsync(async (req: Request, res: Response) =
     await AuditLog.create({
         action: AuditAction.SKU_DELETED,
         skuId: skuProduct._id,
-        previousValue: skuProduct.quantity,
+        previousValue: { productId: (skuProduct as any).productId, name: skuProduct.name, price: skuProduct.price },
         newValue: null,
         userId: 'system'
     });
@@ -124,47 +126,4 @@ export const deleteSKUProduct = catchAsync(async (req: Request, res: Response) =
 });
 
 // Update SKU Product quantity (for sales/restocking)
-export const updateSKUQuantity = catchAsync(async (req: Request, res: Response) => {
-    const { id } = req.params;
-    const { quantity, action = 'add' } = req.body; // action can be 'add' or 'subtract'
-
-    if (!quantity || isNaN(quantity) || quantity <= 0) {
-        return sendError(res, "A valid quantity is required", 400);
-    }
-
-    const skuProduct = await SKUProduct.findById(id);
-    if (!skuProduct) {
-        return sendError(res, "SKU Product not found", 404);
-    }
-
-    const previousQuantity = skuProduct.quantity;
-    let newQuantity = previousQuantity;
-
-    if (action === 'subtract') {
-        if (previousQuantity < quantity) {
-            return sendError(res, "Insufficient quantity available", 400);
-        }
-        newQuantity = previousQuantity - quantity;
-    } else {
-        newQuantity = previousQuantity + quantity;
-    }
-
-    const updatedSKU = await SKUProduct.findByIdAndUpdate(
-        id,
-        { quantity: newQuantity },
-        { new: true, runValidators: true }
-    );
-
-    // Log the quantity change in audit log
-    await AuditLog.create({
-        action: action === 'subtract' ? AuditAction.SKU_SOLD : AuditAction.SKU_RESTOCKED,
-        skuId: id,
-        previousValue: previousQuantity,
-        newValue: newQuantity,
-        userId: 'system',
-        quantity: quantity
-    });
-
-    logger.info(`SKU Product quantity updated for ID: ${id}`);
-    sendSuccess(res, "SKU Product quantity updated successfully", updatedSKU);
-});
+// Quantity updates are handled via SlotInventory endpoints now
