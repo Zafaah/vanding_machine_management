@@ -3,8 +3,8 @@ import { sendSuccess, sendError } from "../utils/apiResponse";
 import * as machineService from "../services/vendingMachine/machineService";
 
 export const createVendingMachine = catchAsync(async (req, res) => {
-   if (!req.body.name || !req.body.location) {
-      return sendError(res, "Name and location are required", 400);
+   if (!req.body.name || !req.body.location || !req.body.type) {
+      return sendError(res, "Name, location and type are required", 400);
    }
 
    const meta = {
@@ -14,7 +14,6 @@ export const createVendingMachine = catchAsync(async (req, res) => {
    };
 
    const vendingMachine = await machineService.createMachine(req.body, meta);
-
    sendSuccess(res, "Vending machine created successfully", vendingMachine, 201);
 });
 

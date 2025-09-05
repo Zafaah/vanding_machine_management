@@ -56,20 +56,13 @@ const VendingMachineSchema = new Schema<IVendingMachine>({
 });
 
 VendingMachineSchema.pre('save', function (next) {
-
     if (this.type === machineType.SLOT && Array.isArray(this.canisters) && this.canisters.length > 0) {
         return next(new Error("Canisters are not allowed for slot machines"));
-      }
-      if (this.type === machineType.COFFEE && Array.isArray(this.trays) && this.trays.length > 0) {
-        return next(new Error("Trays are not allowed for coffee machines"));
-      }
-    if (
-        this.type === machineType.COMBO &&
-        (this.trays&& this.trays.length > 0) &&
-        (this.canisters && this.canisters.length > 0)
-    ) {
-        return next(new Error('Combo machine must have at least one tray OR one canister'));
     }
+    if (this.type === machineType.COFFEE && Array.isArray(this.trays) && this.trays.length > 0) {
+        return next(new Error("Trays are not allowed for coffee machines"));
+    }
+    // Combo machines can have both trays and canisters (no validation needed)
     next();
 });
 

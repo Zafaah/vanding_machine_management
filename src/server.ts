@@ -13,6 +13,7 @@ import vendingRouter from './routes/vendingRoute';
 import slotsRouter from './routes/slotsRoute';
 import skuProductRoute from './routes/skuProductRoute';
 import slotInventoryRouter from './routes/slotInventoryRoute';
+import salesRouter from './routes/salesRoute';
 const app = express();
 app.use(express.json());
 // Log all incoming requests
@@ -31,6 +32,7 @@ app.use('/api/vending', vendingRouter);
 app.use('/api/slots', slotsRouter);
 app.use('/api/sku', skuProductRoute);
 app.use('/api/slot-inventory', slotInventoryRouter);
+app.use('/api/sales', salesRouter);
 
 app.all('*', (req: Request, res: Response, next: NextFunction) => {
    next(new AppError(`can not find ${req.originalUrl} on this server`, 404))

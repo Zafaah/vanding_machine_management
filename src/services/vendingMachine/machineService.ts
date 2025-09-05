@@ -7,15 +7,28 @@ import { formatVendingMachine } from "../../utils/vendingMachineResponse";
 export async function createMachine(data: any, meta: any): Promise<IVendingMachine> {
    const { name, location, status, type, trays, canisters } = data;
 
+   // Validate machine type and component combinations
+   if (type === machineType.COFFEE) {
+      if (trays && trays.length > 0) {
+         throw new Error("Coffee machines cannot have trays");
+      }
+   } else if (type === machineType.SLOT) {
+      if (canisters && canisters.length > 0) {
+         throw new Error("Slot machines cannot have canisters");
+      }
+   } else if (type === machineType.COMBO) {
+      // Combo machines can have both trays and canisters (no validation required)
+   }
+
    const machineData: any = { name, location, status: status || "active", type };
 
    if (type === machineType.COFFEE) {
-      machineData.canisters = canisters;
+      machineData.canisters = canisters || [];
    } else if (type === machineType.SLOT) {
-      machineData.trays = trays;
+      machineData.trays = trays || [];
    } else if (type === machineType.COMBO) {
-      machineData.trays = trays;
-      machineData.canisters = canisters;
+      machineData.trays = trays || [];
+      machineData.canisters = canisters || [];
    }
 
    const vendingMachine = await VendingMachine.create(machineData);
