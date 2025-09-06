@@ -1,156 +1,72 @@
-import catchAsync from "../middlewares/catchasync";
 import { Request, Response } from "express";
-import Ingredient from "../models/ingredient";
-import { sendSuccess, sendError } from "../utils/apiResponse";
-import logger from "../logging/logger";
-import { AuditAction } from "../types/types";
-import AuditLog from "../models/auditLOg";
-import { paginateAndSearch } from "../utils/apiFeatures";
+import catchAsync from "../middlewares/catchasync";
+import { sendError, sendSuccess } from "../utils/apiResponse";
+import * as ingredientService from "../services/ingredientService";
+import Canister from "../models/conisters";
 
-
-// Create a new ingredient
+// Create Ingredient
 export const createIngredient = catchAsync(async (req: Request, res: Response) => {
-    const { name, unitOfMeasure, stockLevel, threshold } = req.body;
-
-    // Check if ingredient with the same name already exists
-    const existingIngredient = await Ingredient.findOne({ name });
-    if (existingIngredient) {
-        return sendError(res, "Ingredient with this name already exists", 400);
+    const { canisterId } = req.body;
+    
+    const ingredient = await ingredientService.createIngredient(req.body);
+    
+    // Automatically assign ingredient to canister if canisterId is provided
+    if (canisterId) {
+        await Canister.findByIdAndUpdate(canisterId,
+            { $addToSet: { ingredientId: ingredient._id } });
     }
-
-    const ingredient = await Ingredient.create({
-        name,
-        unitOfMeasure,
-        stockLevel,
-        threshold
-    });
-
-    // Log the creation in audit log
-    await AuditLog.create({
-        action: AuditAction.INGREDIENT_CREATED,
-        ingredientId: ingredient._id,
-        previousValue: null,
-        newValue: ingredient,
-        userId: 'system',
-    });
-
-    logger.info(`Ingredient created: ${ingredient._id}`);
-    sendSuccess(res, "Ingredient created successfully", ingredient, 201);
+    
+    sendSuccess(res, "Ingredient created successfully", ingredient, 201);   
 });
 
-// Get all ingredients
+// Get all Ingredients
 export const getAllIngredients = catchAsync(async (req: Request, res: Response) => {
-    const ingredients = await paginateAndSearch(Ingredient,req)
-    sendSuccess(res, "Ingredients retrieved successfully", ingredients);
+    const result = await ingredientService.getAllIngredients(req.query);
+    sendSuccess(res, "Ingredients retrieved successfully", result);
 });
 
-// Get a single ingredient by ID
+// Get Ingredient by ID
 export const getIngredientById = catchAsync(async (req: Request, res: Response) => {
     const { id } = req.params;
-    
-    const ingredient = await Ingredient.findById(id);
-    if (!ingredient) {
-        return sendError(res, "Ingredient not found", 404);
-    }
-    
+    const ingredient = await ingredientService.getIngredientById(id);
     sendSuccess(res, "Ingredient retrieved successfully", ingredient);
 });
 
-// Update an ingredient
+// Update Ingredient
 export const updateIngredient = catchAsync(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const updateData = req.body;
-
-    // Don't allow updating the _id
-    if (updateData._id) {
-        delete updateData._id;
-    }
-
-    const ingredient = await Ingredient.findByIdAndUpdate(
-        id,
-        updateData,
-        { new: true, runValidators: true }
-    );
-
-    if (!ingredient) {
-        return sendError(res, "Ingredient not found", 404);
-    }
-
-    // Log the update in audit log
-    await AuditLog.create({
-        action: AuditAction.INGREDIENT_UPDATED,
-        ingredientId: ingredient._id,
-        previousValue: req.body.previousState || {},
-        newValue: ingredient,
-        userId: 'system',
-    });
-
-    logger.info(`Ingredient updated: ${ingredient._id}`);
+    const ingredient = await ingredientService.updateIngredient(id, req.body);
     sendSuccess(res, "Ingredient updated successfully", ingredient);
 });
 
-// Delete an ingredient
+// Delete Ingredient
 export const deleteIngredient = catchAsync(async (req: Request, res: Response) => {
     const { id } = req.params;
-
-    const ingredient = await Ingredient.findByIdAndDelete(id);
-    
-    if (!ingredient) {
-        return sendError(res, "Ingredient not found", 404);
-    }
-
-    // Log the deletion in audit log
-    await AuditLog.create({
-        action: AuditAction.INGREDIENT_DELETED,
-        ingredientId: id,
-        previousValue: ingredient,
-        newValue: null,
-        userId: 'system',
-    });
-
-    logger.info(`Ingredient deleted: ${id}`);
-    sendSuccess(res, "Ingredient deleted successfully", null);
+    const ingredient = await ingredientService.deleteIngredient(id);
+    sendSuccess(res, "Ingredient deleted successfully", ingredient);
 });
 
-// Update ingredient stock level
+// Update Ingredient Stock
 export const updateIngredientStock = catchAsync(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const { quantity, action = 'add' } = req.body; // action can be 'add' or 'subtract'
-
-    if (!quantity || isNaN(quantity) || quantity <= 0) {
-        return sendError(res, "Please provide a valid quantity greater than 0", 400);
+    const { stockLevel } = req.body;
+    
+    if (stockLevel === undefined) {
+        return sendError(res, "stockLevel is required", 400);
     }
+    
+    const ingredient = await ingredientService.updateIngredientStock(id, stockLevel);
+    sendSuccess(res, "Ingredient stock updated successfully", ingredient);
+});
 
-    const ingredient = await Ingredient.findById(id);
-    if (!ingredient) {
-        return sendError(res, "Ingredient not found", 404);
+// Search Ingredients
+export const searchIngredients = catchAsync(async (req: Request, res: Response) => {
+    const { q } = req.query;
+    
+    if (!q) {
+        return sendError(res, "Search query is required", 400);
     }
-
-    const previousQuantity = ingredient.stockLevel;
-    let newQuantity;
-
-    if (action === 'subtract') {
-        if (previousQuantity < quantity) {
-            return sendError(res, "Insufficient stock", 400);
-        }
-        newQuantity = previousQuantity - quantity;
-    } else {
-        newQuantity = previousQuantity + quantity;
-    }
-
-    ingredient.stockLevel = newQuantity;
-    await ingredient.save();
-
-    // Log the stock update in audit log
-    await AuditLog.create({
-        action: action === 'subtract' ? AuditAction.INGREDIENT_CONSUMED : AuditAction.INGREDIENT_REFILLED,
-        ingredientId: id,
-        previousValue: previousQuantity,
-        newValue: newQuantity,
-        unit: ingredient.unitOfMeasure,
-        userId: 'system',
-    });
-
-    logger.info(`Ingredient ${action === 'subtract' ? 'consumed' : 'refilled'}: ${id}, Quantity: ${quantity}`);
-    sendSuccess(res, `Ingredient stock ${action === 'subtract' ? 'reduced' : 'increased'} successfully`, ingredient);
+    
+    const result = await ingredientService.searchIngredients(q as string, req.query);
+    sendSuccess(res, "Ingredients search completed", result);
 });

@@ -14,6 +14,10 @@ import slotsRouter from './routes/slotsRoute';
 import skuProductRoute from './routes/skuProductRoute';
 import slotInventoryRouter from './routes/slotInventoryRoute';
 import salesRouter from './routes/salesRoute';
+import recipeRouter from './routes/recipeRoute';
+import ingredientRouter from './routes/ingredientRout';
+import nonSkuRouter from './routes/nonSkuProductRoute';
+import forecastRouter from './routes/forecastRoute';
 const app = express();
 app.use(express.json());
 // Log all incoming requests
@@ -33,6 +37,10 @@ app.use('/api/slots', slotsRouter);
 app.use('/api/sku', skuProductRoute);
 app.use('/api/slot-inventory', slotInventoryRouter);
 app.use('/api/sales', salesRouter);
+app.use('/api/recipes', recipeRouter);
+app.use('/api/ingredients', ingredientRouter);
+app.use('/api/non-sku', nonSkuRouter);
+app.use('/api/forecast', forecastRouter);
 
 app.all('*', (req: Request, res: Response, next: NextFunction) => {
    next(new AppError(`can not find ${req.originalUrl} on this server`, 404))

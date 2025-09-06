@@ -1,105 +1,80 @@
 import mongoose, { Document } from "mongoose";
-import { RecipeIngredient } from "../types/types";
-import { AuditAction } from "../types/types";
-import AuditLog from "./auditLOg";
+import { UnitOfMeasure } from "../types/types";
 
-export interface Recipe extends Document {
-    name: string;
-    ingredients: RecipeIngredient[];
-    price: number;
-    isAvailable: boolean;
-    machineId: mongoose.Schema.Types.ObjectId;
-    checkAvailability(): Promise<boolean>;
+export interface RecipeIngredient {
+    ingredientId: mongoose.Schema.Types.ObjectId;
+    quantity: number;
+    unit: UnitOfMeasure;
 }
 
+export interface Recipe extends Document {
+    recipeId: string;
+    name: string;
+    description?: string;
+    price: number;
+    ingredients: RecipeIngredient[];
+    machineId: mongoose.Schema.Types.ObjectId;
+    isActive: boolean;
+}
+
+const RecipeIngredientSchema = new mongoose.Schema<RecipeIngredient>({
+    ingredientId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Ingredient',
+        required: [true, 'ingredientId is required']
+    },
+    quantity: {
+        type: Number,
+        required: [true, 'quantity is required'],
+        min: [0, 'quantity cannot be negative']
+    },
+    unit: {
+        type: String,
+        enum: Object.values(UnitOfMeasure),
+        required: [true, 'unit is required']
+    }
+}, { _id: false });
+
 const RecipeSchema = new mongoose.Schema<Recipe>({
+    recipeId: {
+        type: String,
+        required: [true, 'recipeId is required'],
+        trim: true
+    },
     name: {
         type: String,
         required: [true, 'name is required'],
-        trim: true,
-        unique: true
+        trim: true
     },
-    ingredients: [{
-        ingredientId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Ingredient',
-            required: [true, 'ingredientId is required']
-        },
-        quantity: {
-            type: Number,
-            required: [true, 'quantity is required']
-        }
-    }],
+    description: {
+        type: String,
+        trim: true,
+        default: ''
+    },
     price: {
         type: Number,
-        required: [true, 'price is required']
+        required: [true, 'price is required'],
+        min: [0, 'price cannot be negative']
     },
-    isAvailable: {
-        type: Boolean,
-        default: true
-    },
+    ingredients: [RecipeIngredientSchema],
     machineId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'VendingMachine',
-        required: true
+        required: [true, 'machineId is required']
+    },
+    isActive: {
+        type: Boolean,
+        default: true
     }
 }, {
     timestamps: true,
     versionKey: false
 });
 
-RecipeSchema.index({ name: 1 }, { unique: true });
-
-RecipeSchema.pre('save', async function(next) {
-    // Check if recipe is available based on ingredient stock levels
-    const ingredients = await Promise.all(
-        this.ingredients.map(async (ingredient) => {
-            const stock = await mongoose.model('Ingredient').findById(ingredient.ingredientId);
-            return stock?.stockLevel >= ingredient.quantity;
-        })
-    );
-
-    this.isAvailable = ingredients.every(Boolean);
-
-    // Create audit log for recipe creation/update
-    await AuditLog.create({
-        action: this.isNew ? AuditAction.MACHINE_CREATED : AuditAction.RECIPE_OUT_OF_STOCK,
-        recipeId: this._id,
-        machineId: this.machineId,
-        userId: 'system',
-        ipAddress: '127.0.0.1',
-        userAgent: 'System Audit'
-    });
-
-    next();
-});
-
-RecipeSchema.methods.checkAvailability = async function() {
-    const ingredients = await Promise.all(
-        this.ingredients.map(async (ingredient:RecipeIngredient) => {
-            const stock = await mongoose.model('Ingredient').findById(ingredient.ingredientId);
-            return stock?.stockLevel >= ingredient.quantity;
-        })
-    );
-
-    const isAvailable = ingredients.every(Boolean);
-    if (isAvailable !== this.isAvailable) {
-        this.isAvailable = isAvailable;
-        await this.save();
-        
-        // Create audit log for availability change
-        await AuditLog.create({
-            action: isAvailable ? AuditAction.RECIPE_OUT_OF_STOCK : AuditAction.RECIPE_OUT_OF_STOCK,
-            recipeId: this._id,
-            machineId: this.machineId,
-            userId: 'system',
-            ipAddress: '127.0.0.1',
-            userAgent: 'System Audit'
-        });
-    }
-
-    return isAvailable;
-};
+// Indexes
+RecipeSchema.index({ recipeId: 1 }, { unique: true });
+RecipeSchema.index({ machineId: 1, isActive: 1 });
 
 const Recipe = mongoose.model<Recipe>('Recipe', RecipeSchema);
+
 export default Recipe;

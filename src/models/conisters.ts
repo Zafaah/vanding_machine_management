@@ -1,5 +1,4 @@
 import mongoose, { Document } from "mongoose";
-import Ingredient from "./ingredient";
 
 export interface Canister extends Document {
     name: string;

@@ -11,13 +11,15 @@ interface PaginatedResult<T> {
 
 export async function paginateAndSearch<T extends Document>(
   Model: Model<T>,
-  req: Request,
+  reqOrQuery: Request | any,
   populate?: string | PopulateOptions | (string | PopulateOptions)[]
 ): Promise<PaginatedResult<T>> {
-  const { page = 1, limit = 10, search = "", ...filters } = req.query;
+  // Handle both Request object and query object
+  const queryParams = reqOrQuery.query || reqOrQuery || {};
+  const { page = 1, limit = 10, search = "", ...filters } = queryParams;
 
-  const pageNum = Math.max(1, parseInt(page as string));
-  const limitNum = Math.max(1, parseInt(limit as string));
+  const pageNum = Math.max(1, parseInt(String(page)) || 1);
+  const limitNum = Math.max(1, parseInt(String(limit)) || 10);
 
 
   const searchCondition =

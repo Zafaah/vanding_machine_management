@@ -28,7 +28,7 @@ const AuditLogSchema = new mongoose.Schema<AuditLog>({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'VendingMachine',
     required: function (this: AuditLog) {
-      return [AuditAction.MACHINE_CREATED, AuditAction.SKU_SOLD, AuditAction.CANISTER_REFILLED].includes(this.action);
+      return [AuditAction.MACHINE_CREATED, AuditAction.SKU_SOLD, AuditAction.CANISTER_CREATED, AuditAction.CANISTER_UPDATED, AuditAction.CANISTER_REFILLED].includes(this.action);
     }
   },
   skuId: { type: mongoose.Schema.Types.ObjectId, ref: 'SKUProduct' },
@@ -67,6 +67,12 @@ AuditLogSchema.pre('save', function (next) {
   switch (this.action) {
     case AuditAction.SKU_SOLD:
       return assertFields(['skuId', 'quantity', 'unit', 'machineId'], 'SKU_SOLD', this, next);
+    case AuditAction.CANISTER_CREATED:
+      return assertFields(['canisterId', 'machineId'], 'CANISTER_CREATED', this, next);
+    case AuditAction.CANISTER_UPDATED:
+      return assertFields(['canisterId', 'machineId'], 'CANISTER_UPDATED', this, next);
+    case AuditAction.CANISTER_DELETED:
+      return assertFields(['canisterId', 'machineId'], 'CANISTER_DELETED', this, next);
     case AuditAction.CANISTER_REFILLED:
       return assertFields(['canisterId', 'quantity', 'unit', 'machineId'], 'CANISTER_REFILLED', this, next);
     case AuditAction.INGREDIENT_CONSUMED:

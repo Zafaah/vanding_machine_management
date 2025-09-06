@@ -1,7 +1,7 @@
 import mongoose, { Document, ObjectId } from "mongoose";
-import AuditLog from "./auditLOg";
-import { AuditAction } from "../types/types";
+
 export interface SKUProduct extends Document {
+    slotId: mongoose.Schema.Types.ObjectId;
     productId: string;
     name: String;
     description?: string;
@@ -9,6 +9,11 @@ export interface SKUProduct extends Document {
 };
 
 const SKUProductSchema = new mongoose.Schema<SKUProduct>({
+    slotId: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: [true, 'slotId is required'],
+        ref: 'Slot'
+    },
     productId: {
         type: String,
         required: [true, 'productId is required'],
@@ -29,8 +34,7 @@ const SKUProductSchema = new mongoose.Schema<SKUProduct>({
     price: {
         type: Number,
         required: [true,'price is required']
-    },
-    
+    }
 }, {
     timestamps: true,
     versionKey: false

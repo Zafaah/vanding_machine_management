@@ -12,7 +12,7 @@
   },
   "include": [
     "src/**/*"
-, "src/validate"  ],
+  ],
   "exclude": [
     "node_modules",
     "dist"

@@ -1,60 +1,76 @@
-import catchAsync from "../middlewares/catchasync";
 import { Request, Response } from "express";
+import catchAsync from "../middlewares/catchasync";
+import { sendError, sendSuccess } from "../utils/apiResponse";
 import Recipe from "../models/recipe";
-import { sendSuccess, sendError } from "../utils/apiResponse";
-import logger from "../logging/logger";
-import { AuditAction } from "../types/types";
+import VendingMachine from "../models/vendingMModel";
+import Ingredient from "../models/ingredient";
 import AuditLog from "../models/auditLOg";
+import { AuditAction } from "../types/types";
 import { paginateAndSearch } from "../utils/apiFeatures";
 
 // Create a new recipe
 export const createRecipe = catchAsync(async (req: Request, res: Response) => {
-    const { name, ingredients, price, machineId } = req.body;
+    const { recipeId, name, description = '', price, ingredients, machineId } = req.body;
 
-    // Check if recipe with the same name already exists
-    const existingRecipe = await Recipe.findOne({ name });
+    if (!recipeId || !name || !price || !ingredients || !machineId) {
+        return sendError(res, "recipeId, name, price, ingredients, and machineId are required", 400);
+    }
+
+    // Validate machine exists and is coffee type
+    const machine = await VendingMachine.findById(machineId);
+    if (!machine) {
+        return sendError(res, "Machine not found", 404);
+    }
+    if (machine.type !== 'coffee' && machine.type !== 'combo') {
+        return sendError(res, "Recipes can only be created for coffee or combo machines", 400);
+    }
+
+    // Validate ingredients exist
+    const ingredientIds = ingredients.map((ing: any) => ing.ingredientId);
+    const existingIngredients = await Ingredient.find({ _id: { $in: ingredientIds } });
+    if (existingIngredients.length !== ingredientIds.length) {
+        return sendError(res, "One or more ingredients not found", 404);
+    }
+
+    // Check for duplicate recipeId
+    const existingRecipe = await Recipe.findOne({ recipeId });
     if (existingRecipe) {
-        return sendError(res, "Recipe with this name already exists", 400);
+        return sendError(res, "Recipe with this recipeId already exists", 409);
     }
 
     const recipe = await Recipe.create({
+        recipeId,
         name,
-        ingredients,
+        description,
         price,
+        ingredients,
         machineId
     });
 
-    // Log the creation in audit log
     await AuditLog.create({
         action: AuditAction.RECIPE_CREATED,
         recipeId: recipe._id,
-        machineId: recipe.machineId,
-        userId: 'system',
-        ipAddress: req.ip,
-        userAgent: req.get('user-agent') || 'Unknown'
+        previousValue: null,
+        newValue: recipe,
+        userId: 'system'
     });
 
-    logger.info(`Recipe created: ${recipe._id}`);
     sendSuccess(res, "Recipe created successfully", recipe, 201);
 });
 
 // Get all recipes
 export const getAllRecipes = catchAsync(async (req: Request, res: Response) => {
-    const recipes = await paginateAndSearch(Recipe, req, [
-        { path: 'ingredients.ingredientId', select: 'name unitOfMeasure' },
-        { path: 'machineId', select: 'name location' }
-    ]);
+    const recipes = await paginateAndSearch(Recipe, req);
     sendSuccess(res, "Recipes retrieved successfully", recipes);
 });
 
-// Get a single recipe by ID
+// Get recipe by ID
 export const getRecipeById = catchAsync(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const recipe = await Recipe.findById(req.params.id).populate([
+        { path: 'machineId', select: 'name type location' },
+        { path: 'ingredients.ingredientId', select: 'name unitOfMeasure' }
+    ]);
     
-    const recipe = await Recipe.findById(id)
-        .populate('ingredients.ingredientId', 'name unitOfMeasure')
-        .populate('machineId', 'name location');
-        
     if (!recipe) {
         return sendError(res, "Recipe not found", 404);
     }
@@ -62,82 +78,79 @@ export const getRecipeById = catchAsync(async (req: Request, res: Response) => {
     sendSuccess(res, "Recipe retrieved successfully", recipe);
 });
 
-// Update a recipe
+// Update recipe
 export const updateRecipe = catchAsync(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const updateData = req.body;
+    const { recipeId, name, description, price, ingredients, isActive } = req.body;
 
-    // Don't allow updating the _id
-    if (updateData._id) {
-        delete updateData._id;
-    }
-
-    const recipe = await Recipe.findByIdAndUpdate(
-        id,
-        { ...updateData, isAvailable: undefined }, // Let the pre-save hook handle availability
-        { new: true, runValidators: true }
-    )
-    .populate('ingredients.ingredientId', 'name unitOfMeasure');
-
-    if (!recipe) {
-        return sendError(res, "Recipe not found", 404);
-    }
-
-    // Force availability check
-    await recipe.checkAvailability();
-
-    // Log the update in audit log
-    await AuditLog.create({
-        action: AuditAction.RECIPE_UPDATED,
-        recipeId: recipe._id,
-        machineId: recipe.machineId,
-        userId: 'system',
-        ipAddress: req.ip,
-        userAgent: req.get('user-agent') || 'Unknown'
-    });
-
-    logger.info(`Recipe updated: ${recipe._id}`);
-    sendSuccess(res, "Recipe updated successfully", recipe);
-});
-
-// Delete a recipe
-export const deleteRecipe = catchAsync(async (req: Request, res: Response) => {
-    const { id } = req.params;
-
-    const recipe = await Recipe.findByIdAndDelete(id);
-    
-    if (!recipe) {
-        return sendError(res, "Recipe not found", 404);
-    }
-
-    // Log the deletion in audit log
-    await AuditLog.create({
-        action: AuditAction.RECIPE_DELETED,
-        recipeId: id,
-        machineId: recipe.machineId,
-        userId: 'system',
-        ipAddress: req.ip,
-        userAgent: req.get('user-agent') || 'Unknown'
-    });
-
-    logger.info(`Recipe deleted: ${id}`);
-    sendSuccess(res, "Recipe deleted successfully", null);
-});
-
-// Check recipe availability
-export const checkRecipeAvailability = catchAsync(async (req: Request, res: Response) => {
-    const { id } = req.params;
-    
     const recipe = await Recipe.findById(id);
     if (!recipe) {
         return sendError(res, "Recipe not found", 404);
     }
-    
-    const isAvailable = await recipe.checkAvailability();
-    
-    sendSuccess(res, "Recipe availability checked successfully", { 
-        recipeId: recipe._id,
-        name: recipe.name,
-        isAvailable 
+
+    // Check for recipeId conflict if being updated
+    if (recipeId && recipeId !== recipe.recipeId) {
+        const existingRecipe = await Recipe.findOne({ 
+            _id: { $ne: id },
+            recipeId: recipeId
+        });
+        if (existingRecipe) {
+            return sendError(res, "Another recipe with this recipeId already exists", 409);
+        }
+    }
+
+    const updatedRecipe = await Recipe.findByIdAndUpdate(
+        id,
+        { recipeId, name, description, price, ingredients, isActive },
+        { new: true, runValidators: true }
+    ).populate([
+        { path: 'machineId', select: 'name type location' },
+        { path: 'ingredients.ingredientId', select: 'name unitOfMeasure' }
+    ]);
+
+    await AuditLog.create({
+        action: AuditAction.RECIPE_UPDATED,
+        recipeId: id,
+        previousValue: recipe,
+        newValue: updatedRecipe,
+        userId: 'system'
     });
+
+    sendSuccess(res, "Recipe updated successfully", updatedRecipe);
+});
+
+// Delete recipe
+export const deleteRecipe = catchAsync(async (req: Request, res: Response) => {
+    const recipe = await Recipe.findByIdAndDelete(req.params.id);
+    if (!recipe) {
+        return sendError(res, "Recipe not found", 404);
+    }
+
+    await AuditLog.create({
+        action: AuditAction.RECIPE_DELETED,
+        recipeId: recipe._id,
+        previousValue: recipe,
+        newValue: null,
+        userId: 'system'
+    });
+
+    sendSuccess(res, "Recipe deleted successfully", null);
+});
+
+// Get recipes by machine
+export const getRecipesByMachine = catchAsync(async (req: Request, res: Response) => {
+    const { machineId } = req.params;
+    const { isActive } = req.query;
+
+    const query: any = { machineId };
+    if (isActive !== undefined) {
+        query.isActive = isActive === 'true';
+    }
+
+    const recipes = await Recipe.find(query).populate([
+        { path: 'machineId', select: 'name type location' },
+        { path: 'ingredients.ingredientId', select: 'name unitOfMeasure' }
+    ]);
+
+    sendSuccess(res, "Machine recipes retrieved successfully", recipes);
 });

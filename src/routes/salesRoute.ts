@@ -6,13 +6,17 @@ import {
     getAllSales,
     getSalesByMachine,
     getSalesSummary,
-    refundSale
+    refundSale,
+    calculateCoffeeAvailability
 } from "../controllers/salesController";
 
 const salesRouter = express.Router();
 
 // Check inventory before sale
 salesRouter.post('/check-inventory', checkInventoryAvailability);
+
+// Calculate coffee availability
+salesRouter.get('/coffee-availability/:machineId/:recipeId', calculateCoffeeAvailability);
 
 // Process sales
 salesRouter.post('/sku', processSKUSale);

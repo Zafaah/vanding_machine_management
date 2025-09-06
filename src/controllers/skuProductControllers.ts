@@ -1,129 +1,64 @@
 import catchAsync from "../middlewares/catchasync";
 import { Request, Response } from "express";
-import SKUProduct from "../models/skuProduct";
 import { sendSuccess, sendError } from "../utils/apiResponse";
-import logger from "../logging/logger";
-import AuditLog from "../models/auditLOg";
-import { AuditAction } from "../types/types";
-import { paginateAndSearch } from "../utils/apiFeatures";
+import * as skuProductService from "../services/skuProductService";
 import Slots from "../models/slots";
 
 // Create a new SKU Product
 export const createSKUProduct = catchAsync(async (req: Request, res: Response) => {
-    const { productId, name, description = '', price } = req.body;
+    const { slotId } = req.body;
+    const skuProduct = await skuProductService.createSKUProduct(req.body);  
 
-    if (!productId || !name || price === undefined) {
-        return sendError(res, "productId, name and price are required", 400);
+    if (slotId) {
+        await Slots.findByIdAndUpdate(slotId,
+            { $addToSet: { skuId: skuProduct._id } });
+        
+        // Add slotId to the response
+        const responseData = {
+            ...skuProduct.toObject(),
+            slotId: slotId
+        };
+        return sendSuccess(res, "SKU Product created successfully", responseData, 201);
     }
-
-    // Check for existing SKU with same name (case insensitive)
-    const existingSKU = await SKUProduct.findOne({ 
-        $or: [
-            { name: { $regex: new RegExp(`^${name}$`, 'i') } },
-            { productId: productId }
-        ]
-    });
     
-    if (existingSKU) {
-        return sendError(res, "SKU with this name already exists", 409);
-    }
-
-    const skuProduct = await SKUProduct.create({
-        productId,
-        name,
-        description,
-        price
-    });
-
-    logger.info(`SKU Product created with ID: ${skuProduct._id}`);
-
-    await AuditLog.create({
-        action: AuditAction.SKU_CREATED,
-        skuId: skuProduct._id,
-        previousValue: null,
-        newValue: { productId, name, price },
-        userId: 'system'
-    });
-
     sendSuccess(res, "SKU Product created successfully", skuProduct, 201);
 });
 
 // Get all SKU Products
 export const getAllSKUProducts = catchAsync(async (req: Request, res: Response) => {
-    const skuProducts = await paginateAndSearch(SKUProduct,req)
-    sendSuccess(res, "SKU Products retrieved successfully", skuProducts);
+    const result = await skuProductService.getAllSKUProducts(req.query);
+    sendSuccess(res, "SKU Products retrieved successfully", result);
 });
 
-// Get a single SKU Product by ID
+// Get SKU Product by ID
 export const getSKUProductById = catchAsync(async (req: Request, res: Response) => {
-    const skuProduct = await SKUProduct.findById(req.params.id);
-    if (!skuProduct) {
-        return sendError(res, "SKU Product not found", 404);
-    }
+    const { id } = req.params;
+    const skuProduct = await skuProductService.getSKUProductById(id);
     sendSuccess(res, "SKU Product retrieved successfully", skuProduct);
 });
 
-// Update an existing SKU Product
+// Update SKU Product
 export const updateSKUProduct = catchAsync(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const { productId, name, description, price } = req.body;
+    const skuProduct = await skuProductService.updateSKUProduct(id, req.body);
+    sendSuccess(res, "SKU Product updated successfully", skuProduct);
+});
 
-    const skuProduct = await SKUProduct.findById(id);
-    if (!skuProduct) {
-        return sendError(res, "SKU Product not found", 404);
-    }
+// Delete SKU Product
+export const deleteSKUProduct = catchAsync(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const skuProduct = await skuProductService.deleteSKUProduct(id);
+    sendSuccess(res, "SKU Product deleted successfully", skuProduct);
+});
 
-    // Check for name conflict if name is being updated
-    if ((name && name !== skuProduct.name) || (productId && productId !== skuProduct.productId)) {
-        const existingSKU = await SKUProduct.findOne({ 
-            _id: { $ne: id },
-            $or: [
-                name ? { name: { $regex: new RegExp(`^${name}$`, 'i') } } : undefined,
-                productId ? { productId } : undefined
-            ].filter(Boolean) as any
-        });
-        if (existingSKU) {
-            return sendError(res, "Another SKU with same name or productId exists", 409);
-        }
+// Search SKU Products
+export const searchSKUProducts = catchAsync(async (req: Request, res: Response) => {
+    const { q } = req.query;
+    
+    if (!q) {
+        return sendError(res, "Search query is required", 400);
     }
     
-    // Update the SKU Product
-    const updatedSKU = await SKUProduct.findByIdAndUpdate(
-        id,
-        { productId, name, description, price },
-        { new: true, runValidators: true }
-    );
-    await AuditLog.create({
-        action: AuditAction.SKU_UPDATED,
-        skuId: id,
-        previousValue: null,
-        newValue: { productId, name, description, price },
-        userId: 'system'
-    });
-
-    logger.info(`SKU Product updated with ID: ${id}`);
-    sendSuccess(res, "SKU Product updated successfully", updatedSKU);
+    const result = await skuProductService.searchSKUProducts(q as string, req.query);
+    sendSuccess(res, "SKU Products search completed", result);
 });
-
-// Delete an SKU Product
-export const deleteSKUProduct = catchAsync(async (req: Request, res: Response) => {
-    const skuProduct = await SKUProduct.findByIdAndDelete(req.params.id);
-    if (!skuProduct) {
-        return sendError(res, "SKU Product not found", 404);
-    }
-
-    // Log the deletion in audit log
-    await AuditLog.create({
-        action: AuditAction.SKU_DELETED,
-        skuId: skuProduct._id,
-        previousValue: { productId: (skuProduct as any).productId, name: skuProduct.name, price: skuProduct.price },
-        newValue: null,
-        userId: 'system'
-    });
-
-    logger.info(`SKU Product deleted with ID: ${req.params.id}`);
-    sendSuccess(res, "SKU Product deleted successfully", null);
-});
-
-// Update SKU Product quantity (for sales/restocking)
-// Quantity updates are handled via SlotInventory endpoints now

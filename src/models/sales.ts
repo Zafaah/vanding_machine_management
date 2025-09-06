@@ -22,7 +22,6 @@ const SalesSchema = new mongoose.Schema<Sales>({
     transactionId: {
         type: String,
         required: [true, 'transactionId is required'],
-        unique: true,
         trim: true
     },
     machineId: {

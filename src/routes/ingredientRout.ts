@@ -3,7 +3,8 @@ import { createIngredient,
     getAllIngredients, 
     getIngredientById, 
     updateIngredient, 
-    deleteIngredient } from '../controllers/ingredientController';
+    deleteIngredient,
+    updateIngredientStock } from '../controllers/ingredientController';
 
 const ingredientRouter = express.Router();
 
@@ -15,5 +16,7 @@ ingredientRouter.route('/:id')
    .get(getIngredientById)
    .put(updateIngredient)
    .delete(deleteIngredient);
+
+ingredientRouter.post('/:id/stock', updateIngredientStock);
 
 export default ingredientRouter;

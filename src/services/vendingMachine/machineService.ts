@@ -58,7 +58,10 @@ export async function getAllMachines(req: any) {
             path: "trays",
             populate: { path: "slot", populate: { path: "skuId" } },
          },
-         { path: "canisters" },
+         { 
+            path: "canisters",
+            populate: { path: "ingredientId" }
+         },
       ]);
       return{
          ...result,
@@ -74,7 +77,10 @@ export async function getAllMachines(req: any) {
 export async function getMachineById(id: string) {
    const vendingMachine = await VendingMachine.findById(id)
       .populate("trays")
-      .populate("canisters");
+      .populate({
+         path: "canisters",
+         populate: { path: "ingredientId" }
+      });
    return vendingMachine ? formatVendingMachine(vendingMachine) : null;
 }
 

@@ -1,7 +1,7 @@
 import express from 'express';
 import { conisterValidate, updateCanisterValidate } from '../validate/conisterValidate';
 import { validate } from '../middlewares/validation';
-import { createCanister,getAllCanisters, getCanisterById, updateCanister, deleteCanister, assignIngredientToCanister, refillCanister, consumeCanistersForSale } from '../controllers/conister';
+import { createCanister,getAllCanisters, getCanisterById, updateCanister, deleteCanister, assignIngredientToCanister, refillCanister, consumeIngredientsFromCanisters } from '../controllers/conister';
 
 
 const conisterRoute = express.Router();
@@ -20,6 +20,6 @@ conisterRoute.post('/:id/assign', assignIngredientToCanister);
 // refill canister
 conisterRoute.post('/:id/refill', refillCanister);
 // consume for coffee sale
-conisterRoute.post('/consume', consumeCanistersForSale);
+conisterRoute.post('/consume', consumeIngredientsFromCanisters);
 
 export default conisterRoute;

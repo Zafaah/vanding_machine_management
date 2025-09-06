@@ -1,26 +1,27 @@
 import mongoose, { Document } from "mongoose";
 
 export interface Slots extends Document {
+    slotNumber: string,
     trayId: mongoose.Schema.Types.ObjectId,
-    quantityOnhand: number,
     skuId: mongoose.Schema.Types.ObjectId[],
 }
 
 const SlotsSchema = new mongoose.Schema<Slots>({
+    slotNumber: {
+        type: String,
+        required: [true, 'slotNumber is required'],
+        unique: true
+    },
     trayId: {
         type: mongoose.Schema.Types.ObjectId,
         required: [true, 'trayId is required'],
         ref: 'Tray'
-    },
+    },  
     skuId: {
         type: [mongoose.Schema.Types.ObjectId],
         default: [],
         ref: 'SKUProducts'
     },
-    quantityOnhand: {
-        type: Number,
-        required: [true, 'quantityOnhand is required']
-    }
 }, {
     timestamps: true,
     versionKey: false
