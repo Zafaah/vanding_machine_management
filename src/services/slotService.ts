@@ -6,10 +6,10 @@ import { paginateAndSearch } from "../utils/apiFeatures";
 
 // Create Slot
 export const createSlot = async (data: any, req: any) => {
-    const { trayId, skuId, slotNumber} = data;
+    const { trayId, skuId = [], slotNumber} = data;
     
-    if (!trayId || !skuId || !slotNumber) {
-        throw new Error("trayId, skuId are required");
+    if (!trayId || !slotNumber) {
+        throw new Error("trayId and slotNumber are required");
     }
 
     const existing = await Slots.findOne({ trayId, slotNumber });
@@ -73,16 +73,21 @@ export const getSlotById = async (id: string) => {
 export const updateSlot = async (id: string, data: any) => {
     const { trayId, skuId, slotNumber } = data;
 
-    if (trayId && skuId && slotNumber) {
-        const existing = await Slots.findOne({ trayId, skuId, slotNumber, _id: { $ne: id } });
+    if (trayId && slotNumber) {
+        const existing = await Slots.findOne({ trayId, slotNumber, _id: { $ne: id } });
         if (existing) {
             throw new Error("Slot with this trayId and slotNumber already exists");
         }
     }
 
+    const updateData: any = {};
+    if (trayId !== undefined) updateData.trayId = trayId;
+    if (skuId !== undefined) updateData.skuId = skuId;
+    if (slotNumber !== undefined) updateData.slotNumber = slotNumber;
+
     const slot = await Slots.findByIdAndUpdate(
         id,
-        { trayId, skuId, slotNumber },
+        updateData,
         { new: true, runValidators: true }
     ).populate("trayId").populate("skuId");
 

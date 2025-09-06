@@ -1,14 +1,15 @@
 import SKUProduct from "../models/skuProduct";
+import Slot from "../models/slots";
 import AuditLog from "../models/auditLOg";
 import { AuditAction } from "../types/types";
 import { paginateAndSearch } from "../utils/apiFeatures";
 
 // Create SKU Product
 export const createSKUProduct = async (data: any) => {
-    const { productId, name, description = '', price } = data;
+    const { slotId, productId, name, description = '', price } = data;
 
-    if (!productId || !name || price === undefined) {
-        throw new Error("productId, name and price are required");
+    if (!slotId || !productId || !name || price === undefined) {
+        throw new Error("slotId, productId, name and price are required");
     }
 
     const existingSKU = await SKUProduct.findOne({
@@ -19,7 +20,9 @@ export const createSKUProduct = async (data: any) => {
         throw new Error("SKU with this name or productId already exists");
     }
 
-    const skuProduct = await SKUProduct.create({ productId, name, description, price });
+    const skuProduct = await SKUProduct.create({ slotId, productId, name, description, price });
+
+    await Slot.findByIdAndUpdate(slotId, { $push: { skuProduct: skuProduct._id } });
 
     // Log the creation
     await AuditLog.create({
@@ -28,6 +31,7 @@ export const createSKUProduct = async (data: any) => {
         productId: skuProduct.productId,
         name: skuProduct.name,
         price: skuProduct.price,
+        slotId: skuProduct.slotId,
         userId: 'system'
     });
 
@@ -37,6 +41,7 @@ export const createSKUProduct = async (data: any) => {
 // Get all SKU Products with pagination
 export const getAllSKUProducts = async (query: any) => {
     return await paginateAndSearch(SKUProduct, query);
+    
 };
 
 // Get SKU Product by ID
