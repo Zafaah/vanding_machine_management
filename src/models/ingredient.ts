@@ -1,14 +1,19 @@
 import { UnitOfMeasure } from "../types/types";
-import { Document, Schema, model } from "mongoose";
+import mongoose, { Document, Schema, model } from "mongoose";
 
 export interface Ingredient extends Document {
+    ingredientId: string;
     name: string;
     unitOfMeasure: string;
-    stockLevel: number;
-    threshold: number;
 }
 
-const IngredientSchema = new Schema<Ingredient>({
+const IngredientSchema = new Schema<Ingredient>({   
+    ingredientId: {
+        type: String,
+        required: [true, 'ingredientId is required'],
+        trim: true,
+        unique: true
+    },
     name: {
         type: String,
         required: [true, 'name is required'],
@@ -19,16 +24,12 @@ const IngredientSchema = new Schema<Ingredient>({
         type: String,
         enum: Object.values(UnitOfMeasure),
         required: [true, 'unitOfMeasure is required']
-    },
-    stockLevel: {
-        type: Number,
-        required: [true, 'stockLevel is required']
-    },
-    threshold: {
-        type: Number,
-        required: [true, 'threshold is required']
     }
-}, { timestamps: true });
+}, { 
+    timestamps: true,
+    strict: true, // Reject unknown fields
+    strictQuery: true // Reject unknown query fields
+});
 
 // Create and export the model
 const Ingredients = model<Ingredient>('Ingredient', IngredientSchema);

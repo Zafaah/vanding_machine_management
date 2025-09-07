@@ -46,18 +46,7 @@ export const deleteIngredient = catchAsync(async (req: Request, res: Response) =
     sendSuccess(res, "Ingredient deleted successfully", ingredient);
 });
 
-// Update Ingredient Stock
-export const updateIngredientStock = catchAsync(async (req: Request, res: Response) => {
-    const { id } = req.params;
-    const { stockLevel } = req.body;
-    
-    if (stockLevel === undefined) {
-        return sendError(res, "stockLevel is required", 400);
-    }
-    
-    const ingredient = await ingredientService.updateIngredientStock(id, stockLevel);
-    sendSuccess(res, "Ingredient stock updated successfully", ingredient);
-});
+// Removed warehouse stock tracking
 
 // Search Ingredients
 export const searchIngredients = catchAsync(async (req: Request, res: Response) => {

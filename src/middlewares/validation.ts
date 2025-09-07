@@ -11,8 +11,8 @@ const validate = (schema: Joi.ObjectSchema,
   return (req: Request, res: Response, next: NextFunction) => {
     const { error, value } = schema.validate(req[property], {
       abortEarly: false,
-      allowUnknown: true,
-      stripUnknown: true,
+      allowUnknown: false, // Changed to false to respect schema's unknown setting
+      stripUnknown: false, // Changed to false to respect schema's unknown setting
     });
 
     if (error) {

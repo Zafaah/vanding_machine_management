@@ -12,7 +12,8 @@ export const trayValidate = Joi.object({
     'any.required': 'Machine ID is required',
     'string.pattern.name': 'Invalid Machine ID format',
   }),
-  slots: Joi.array().items(objectId).default([]),
+  slot: Joi.array().items(objectId).default([]),
+  slots: Joi.any().forbidden().messages({ 'any.unknown': 'Use "slot" instead of "slots"' }),
 });
 
 export const idParamSchema = Joi.object({

@@ -7,6 +7,7 @@ import Ingredient from "../models/ingredient";
 import AuditLog from "../models/auditLOg";
 import { AuditAction } from "../types/types";
 import { paginateAndSearch } from "../utils/apiFeatures";
+import ingredient from "../models/ingredient";
 
 // Create a new recipe
 export const createRecipe = catchAsync(async (req: Request, res: Response) => {
@@ -46,7 +47,7 @@ export const createRecipe = catchAsync(async (req: Request, res: Response) => {
         ingredients,
         machineId
     });
-
+ await ingredient.findByIdAndUpdate(ingredients.ingredientId, { $addToSet: { recipeId: recipe._id } });
     await AuditLog.create({
         action: AuditAction.RECIPE_CREATED,
         recipeId: recipe._id,

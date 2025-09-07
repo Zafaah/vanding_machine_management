@@ -1,8 +1,12 @@
 import Joi from "joi";
 import { UnitOfMeasure } from "../types/types";
-
+import { objectId } from "../middlewares/validation";
 // Ingredient Validation
 export const ingredientValidate = Joi.object({
+  ingredientId: Joi.string().trim().required().messages({
+    'string.empty': 'Ingredient ID is required',
+    'any.required': 'Ingredient ID is required',
+  }),
   name: Joi.string().trim().required().messages({
     'string.empty': 'Name is required',
     'any.required': 'Name is required',
@@ -14,14 +18,6 @@ export const ingredientValidate = Joi.object({
       'any.only': `Unit of measure must be one of: ${Object.values(UnitOfMeasure).join(', ')}`,
       'any.required': 'Unit of measure is required',
     }),
-  stockLevel: Joi.number().min(0).required().messages({
-    'number.base': 'Stock level must be a number',
-    'number.min': 'Stock level cannot be negative',
-    'any.required': 'Stock level is required',
-  }),
-  threshold: Joi.number().min(0).required().messages({
-    'number.base': 'Threshold must be a number',
-    'number.min': 'Threshold cannot be negative',
-    'any.required': 'Threshold is required',
-  }),
-});
+  
+  
+}).unknown(false); // Reject unknown fields

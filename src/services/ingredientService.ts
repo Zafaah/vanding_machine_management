@@ -2,13 +2,13 @@ import Ingredients from "../models/ingredient";
 import AuditLog from "../models/auditLOg";
 import { UnitOfMeasure } from "../types/types";
 import { paginateAndSearch } from "../utils/apiFeatures";
-
+import Canister from "../models/conisters";
 // Create Ingredient
 export const createIngredient = async (data: any) => {
-    const { name, unitOfMeasure, stockLevel, threshold } = data;
+    const { ingredientId, name, unitOfMeasure } = data;
 
-    if (!name || !unitOfMeasure || stockLevel === undefined || threshold === undefined) {
-        throw new Error("name, unitOfMeasure, stockLevel, and threshold are required");
+    if (!ingredientId || !name || !unitOfMeasure) {
+        throw new Error("ingredientId, name, and unitOfMeasure are required");
     }
 
     // Validate unitOfMeasure
@@ -17,14 +17,17 @@ export const createIngredient = async (data: any) => {
     }
 
     const existingIngredient = await Ingredients.findOne({
-        name: { $regex: new RegExp(`^${name}$`, 'i') }
+        $or: [
+            { ingredientId: { $regex: new RegExp(`^${ingredientId}$`, 'i') } },
+            { name: { $regex: new RegExp(`^${name}$`, 'i') } }
+        ]
     });
 
     if (existingIngredient) {
-        throw new Error("Ingredient with this name already exists");
+        throw new Error("Ingredient with this ingredientId or name already exists");
     }
 
-    const ingredient = await Ingredients.create({ name, unitOfMeasure, stockLevel, threshold });
+    const ingredient = await Ingredients.create({ ingredientId, name, unitOfMeasure });
 
     // Log the creation
     await AuditLog.create({
@@ -32,10 +35,9 @@ export const createIngredient = async (data: any) => {
         entityType: 'Ingredient',
         entityId: ingredient._id,
         details: {
+            ingredientId: ingredient.ingredientId,
             name: ingredient.name,
             unitOfMeasure: ingredient.unitOfMeasure,
-            stockLevel: ingredient.stockLevel,
-            threshold: ingredient.threshold
         },
         timestamp: new Date()
     });
@@ -45,7 +47,21 @@ export const createIngredient = async (data: any) => {
 
 // Get all Ingredients with pagination
 export const getAllIngredients = async (query: any) => {
-    return await paginateAndSearch(Ingredients, query);
+    const result = await paginateAndSearch(Ingredients, query);
+    if (result && Array.isArray(result.results)) {
+        result.results = await Ingredients.populate(result.results, [
+            {
+                path: "recipeId"
+            }
+        ]);
+        return result;
+    }
+
+    const populated = await Ingredients.populate(result, [
+        { path: "recipeId" }
+    ]);
+
+    return populated;
 };
 
 // Get Ingredient by ID
@@ -59,7 +75,7 @@ export const getIngredientById = async (id: string) => {
 
 // Update Ingredient
 export const updateIngredient = async (id: string, data: any) => {
-    const { name, unitOfMeasure, stockLevel, threshold } = data;
+    const { name, unitOfMeasure } = data;
 
     const existingIngredient = await Ingredients.findById(id);
     if (!existingIngredient) {
@@ -85,14 +101,12 @@ export const updateIngredient = async (id: string, data: any) => {
     const updateData: any = {};
     if (name !== undefined) updateData.name = name;
     if (unitOfMeasure !== undefined) updateData.unitOfMeasure = unitOfMeasure;
-    if (stockLevel !== undefined) updateData.stockLevel = stockLevel;
-    if (threshold !== undefined) updateData.threshold = threshold;
 
     const ingredient = await Ingredients.findByIdAndUpdate(
         id,
         updateData,
         { new: true, runValidators: true }
-    );
+    ).populate('canisterId').populate('recipeId');
 
     if (!ingredient) {
         throw new Error("Failed to update ingredient");
@@ -106,8 +120,6 @@ export const updateIngredient = async (id: string, data: any) => {
         details: {
             name: ingredient.name,
             unitOfMeasure: ingredient.unitOfMeasure,
-            stockLevel: ingredient.stockLevel,
-            threshold: ingredient.threshold,
             previousValue: existingIngredient,
             newValue: ingredient
         },
@@ -131,9 +143,7 @@ export const deleteIngredient = async (id: string) => {
         entityId: ingredient._id,
         details: {
             name: ingredient.name,
-            unitOfMeasure: ingredient.unitOfMeasure,
-            stockLevel: ingredient.stockLevel,
-            threshold: ingredient.threshold
+            unitOfMeasure: ingredient.unitOfMeasure
         },
         timestamp: new Date()
     });
@@ -142,37 +152,11 @@ export const deleteIngredient = async (id: string) => {
 };
 
 // Update Ingredient Stock
-export const updateIngredientStock = async (id: string, stockLevel: number) => {
-    const ingredient = await Ingredients.findById(id);
-    if (!ingredient) {
-        throw new Error("Ingredient not found");
-    }
-
-    const previousStockLevel = ingredient.stockLevel;
-    const updatedIngredient = await Ingredients.findByIdAndUpdate(
-        id,
-        { stockLevel },
-        { new: true, runValidators: true }
-    );
-
-    // Log the stock update
-    await AuditLog.create({
-        action: 'INGREDIENT_STOCK_UPDATED',
-        entityType: 'Ingredient',
-        entityId: ingredient._id,
-        details: {
-            name: ingredient.name,
-            previousStockLevel,
-            newStockLevel: stockLevel,
-            difference: stockLevel - previousStockLevel
-        },
-        timestamp: new Date()
-    });
-
-    return updatedIngredient;
-};
+// Removed warehouse stock tracking (stockLevel/threshold)
 
 // Search Ingredients
 export const searchIngredients = async (searchTerm: string, query: any) => {
     return await paginateAndSearch(Ingredients, { ...query, search: searchTerm });
 };
+
+

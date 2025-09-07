@@ -3,13 +3,14 @@ import { createIngredient,
     getAllIngredients, 
     getIngredientById, 
     updateIngredient, 
-    deleteIngredient,
-    updateIngredientStock } from '../controllers/ingredientController';
+    deleteIngredient } from '../controllers/ingredientController';
+import { ingredientValidate } from '../validate/ingredientValidate';
+import { validate } from '../middlewares/validation';
 
 const ingredientRouter = express.Router();
 
 ingredientRouter.route('/')
-   .post(createIngredient)
+   .post(validate(ingredientValidate), createIngredient)
    .get(getAllIngredients);
 
 ingredientRouter.route('/:id')
@@ -17,6 +18,6 @@ ingredientRouter.route('/:id')
    .put(updateIngredient)
    .delete(deleteIngredient);
 
-ingredientRouter.post('/:id/stock', updateIngredientStock);
+
 
 export default ingredientRouter;

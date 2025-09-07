@@ -38,8 +38,6 @@ const CanisterSchema = new mongoose.Schema<Canister>({
     versionKey: false
 });
 
-CanisterSchema.index({ machineId: 1, ingredientId: 1 }, { unique: true });
-
 const Canister = mongoose.model<Canister>('Canister', CanisterSchema);
 
 export default Canister;

@@ -16,7 +16,7 @@ export const createTray = async (data: any, req: any) => {
     if (!machine) {
         throw new Error("Machine not found");
     }
-    
+
     if (machine.type === 'coffee') {
         throw new Error("Cannot create trays for coffee machines");
     }
@@ -40,8 +40,8 @@ export const createTray = async (data: any, req: any) => {
         userId: 'system',
         ipAddress: req.ip || '127.0.0.1',
         userAgent: req.headers['user-agent'] || 'system',
-        meta: { 
-            trayId: tray._id, 
+        meta: {
+            trayId: tray._id,
             name,
             model: "trays"
         }
@@ -63,7 +63,7 @@ export const getAllTrays = async (query: any) => {
         ]);
         return results;
     }
-    
+
     const populated = await Trays.populate(results, [
         { path: "slot" },
     ]);
@@ -97,7 +97,7 @@ export const updateTray = async (id: string, data: any) => {
         { name, machineId },
         { new: true }
     );
-    
+
     if (!updatedTray) {
         throw new Error("Tray not found");
     }
@@ -114,7 +114,7 @@ export const updateTray = async (id: string, data: any) => {
             $push: { trays: updatedTray._id }
         });
     }
-    
+
     await updatedTray.populate('slot');
     return updatedTray;
 };
@@ -126,8 +126,8 @@ export const deleteTray = async (id: string) => {
         throw new Error("Tray not found");
     }
 
-    await VendingMachine.findByIdAndUpdate(tray.machineId, { 
-        $pull: { trays: tray._id } 
+    await VendingMachine.findByIdAndUpdate(tray.machineId, {
+        $pull: { trays: tray._id }
     });
 
     await tray.populate('slot');

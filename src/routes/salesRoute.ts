@@ -9,6 +9,7 @@ import {
     refundSale,
     calculateCoffeeAvailability
 } from "../controllers/salesController";
+import { consumeIngredientsFromCanisters } from "../controllers/conister";
 
 const salesRouter = express.Router();
 
@@ -21,6 +22,9 @@ salesRouter.get('/coffee-availability/:machineId/:recipeId', calculateCoffeeAvai
 // Process sales
 salesRouter.post('/sku', processSKUSale);
 salesRouter.post('/coffee', processCoffeeSale);
+
+// Consume ingredients for coffee sale
+salesRouter.post('/consume-ingredients', consumeIngredientsFromCanisters);
 
 // Get sales data
 salesRouter.get('/', getAllSales);

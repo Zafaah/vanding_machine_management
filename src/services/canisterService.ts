@@ -5,16 +5,20 @@ import VendingMachine from "../models/vendingMModel";
 import AuditLog from "../models/auditLOg";
 import { AuditAction } from "../types/types";
 import { paginateAndSearch } from "../utils/apiFeatures";
+import { formatVendingMachine } from "../utils/vendingMachineResponse";
 
 // Create Canister
 export const createCanister = async (data: any) => {
-    const { name, machineId, capacity, currentLevel = 0 } = data;
+    const { ingredientId, name, machineId, capacity, currentLevel = 0 } = data;
 
     if (!name || !machineId || !capacity) {
         throw new Error("name, machineId, and capacity are required");
     }
 
-    
+    const machine = await VendingMachine.findById(machineId);
+    if (!machine) {
+        throw new Error("Machine not found");
+    }
 
     // Validate capacity and currentLevel
     if (capacity <= 0) {
@@ -25,9 +29,13 @@ export const createCanister = async (data: any) => {
         throw new Error("Current level must be between 0 and capacity");
     }
 
-    const canister = await Canister.create({ name, machineId, capacity, currentLevel });
+    const canister = await Canister.create({ ingredientId, name, machineId, capacity, currentLevel });
 
-   
+    // Automatically add canister to the vending machine
+    await VendingMachine.findByIdAndUpdate(machineId,
+        { $push: { canisters: canister._id } });
+
+   await canister.populate('ingredientId');
 
     // Log the creation
     await AuditLog.create({
@@ -40,7 +48,8 @@ export const createCanister = async (data: any) => {
         meta: {
             name: canister.name,
             capacity: canister.capacity,
-            currentLevel: canister.currentLevel
+            currentLevel: canister.currentLevel,
+            ingredientId: canister.ingredientId
         }
     });
 
@@ -49,7 +58,21 @@ export const createCanister = async (data: any) => {
 
 // Get all Canisters with pagination
 export const getAllCanisters = async (query: any) => {
-    return await paginateAndSearch(Canister, query);
+    const result = await paginateAndSearch(Canister, query);
+
+    if (result && Array.isArray(result.results)) {
+        result.results = await Canister.populate(result.results, [
+            { path: "ingredientId" }
+        ]);
+        return result;
+    }
+
+    const populated = await Canister.populate(result, [
+        { path: "ingredientId" }
+    ]);
+
+    return populated;
+
 };
 
 // Get Canister by ID
@@ -91,7 +114,7 @@ export const updateCanister = async (id: string, data: any) => {
         id,
         updateData,
         { new: true, runValidators: true }
-    ).populate('ingredientId');
+    ).populate({ path: 'ingredientId', select: 'name unitOfMeasure createdAt updatedAt' });
 
     if (!canister) {
         throw new Error("Failed to update canister");
