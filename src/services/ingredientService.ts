@@ -75,7 +75,7 @@ export const getIngredientById = async (id: string) => {
 
 // Update Ingredient
 export const updateIngredient = async (id: string, data: any) => {
-    const { name, unitOfMeasure } = data;
+    const { name, unitOfMeasure ,ingredientId} = data;
 
     const existingIngredient = await Ingredients.findById(id);
     if (!existingIngredient) {
@@ -93,6 +93,17 @@ export const updateIngredient = async (id: string, data: any) => {
         }
     }
 
+    if (ingredientId && ingredientId !== existingIngredient.ingredientId) {
+
+        const duplicateIngredientId = await Ingredients.findOne({
+            _id: { $ne: id },
+            ingredientId: ingredientId
+        });
+        if (duplicateIngredientId) {
+            throw new Error("Ingredient with this ingredientId already exists");
+        }
+    }
+
     // Validate unitOfMeasure if provided
     if (unitOfMeasure && !Object.values(UnitOfMeasure).includes(unitOfMeasure)) {
         throw new Error(`Invalid unitOfMeasure. Must be one of: ${Object.values(UnitOfMeasure).join(', ')}`);
@@ -101,13 +112,12 @@ export const updateIngredient = async (id: string, data: any) => {
     const updateData: any = {};
     if (name !== undefined) updateData.name = name;
     if (unitOfMeasure !== undefined) updateData.unitOfMeasure = unitOfMeasure;
-
+    if (ingredientId !== undefined) updateData.ingredientId = ingredientId;
     const ingredient = await Ingredients.findByIdAndUpdate(
         id,
         updateData,
         { new: true, runValidators: true }
-    ).populate('canisterId').populate('recipeId');
-
+    )
     if (!ingredient) {
         throw new Error("Failed to update ingredient");
     }
@@ -120,6 +130,7 @@ export const updateIngredient = async (id: string, data: any) => {
         details: {
             name: ingredient.name,
             unitOfMeasure: ingredient.unitOfMeasure,
+            ingredientId: ingredient.ingredientId,
             previousValue: existingIngredient,
             newValue: ingredient
         },

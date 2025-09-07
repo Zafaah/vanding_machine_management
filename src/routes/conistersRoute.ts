@@ -1,5 +1,5 @@
 import express from 'express';
-import { conisterValidate, updateCanisterValidate } from '../validate/conisterValidate';
+import { conisterValidate, updateCanisterValidate, refillCanisterValidate } from '../validate/conisterValidate';
 import { validate } from '../middlewares/validation';
 import {
    createCanister,
@@ -26,6 +26,6 @@ conisterRoute.route('/:id')
 // assign ingredient to a canister
 conisterRoute.post('/:id/assign', assignIngredientToCanister);
 // refill canister
-conisterRoute.post('/:id/refill', refillCanister);
+conisterRoute.post('/:id/refill', validate(refillCanisterValidate), refillCanister);
 
 export default conisterRoute;

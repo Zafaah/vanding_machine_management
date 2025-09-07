@@ -66,9 +66,13 @@ export const refillCanister = catchAsync(async (req: Request, res: Response) => 
     const { id } = req.params;
     const { refillAmount } = req.body;
 
-    if (!refillAmount || refillAmount <= 0) {
-        return sendError(res, "refillAmount is required and must be greater than 0", 400);
-    }
+    // Debug logging
+    console.log('Refill Canister Debug:', {
+        id,
+        refillAmount,
+        body: req.body,
+        contentType: req.get('Content-Type')
+    });
 
     const canister = await canisterService.refillCanister(id, refillAmount);
     sendSuccess(res, "Canister refilled successfully", canister);

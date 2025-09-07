@@ -66,3 +66,11 @@ export const updateCanisterValidate = Joi.object({
 
 
 });
+
+export const refillCanisterValidate = Joi.object({
+  refillAmount: Joi.number().min(0.01).required().messages({
+    'number.base': 'Refill amount must be a number',
+    'number.min': 'Refill amount must be greater than 0',
+    'any.required': 'Refill amount is required',
+  }),
+});

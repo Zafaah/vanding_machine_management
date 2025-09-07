@@ -9,10 +9,20 @@ const objectId = Joi.string().regex(/^[0-9a-fA-F]{24}$/, 'valid ObjectId');
 const validate = (schema: Joi.ObjectSchema,
   property: 'body' | 'params' | 'query' = 'body') => {
   return (req: Request, res: Response, next: NextFunction) => {
+    // Debug logging
+    console.log('Validation Debug:', {
+      property,
+      receivedData: req[property],
+      contentType: req.get('Content-Type'),
+      method: req.method,
+      url: req.originalUrl
+    });
+    
     const { error, value } = schema.validate(req[property], {
       abortEarly: false,
       allowUnknown: false, // Changed to false to respect schema's unknown setting
       stripUnknown: false, // Changed to false to respect schema's unknown setting
+      convert: true, // Enable type coercion
     });
 
     if (error) {
