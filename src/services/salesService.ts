@@ -5,7 +5,6 @@ import VendingMachine from "../models/vendingMModel";
 import SKUProduct from "../models/skuProduct";
 import Canister from "../models/conisters";
 import Recipe from "../models/recipe";
-import Ingredients from "../models/ingredient";
 import AuditLog from "../models/auditLOg";
 import { AuditAction } from "../types/types";
 import * as forecastService from "./forecastService";
@@ -254,6 +253,7 @@ export const processCoffeeSale = async (machineId: string, recipeId: string, pay
                     machineId,
                     canisterId: canister._id,
                     quantity: recipeIngredient.quantity,
+                    ingredientId: recipeIngredient.ingredientId,
                     unit: recipeIngredient.unit,
                     previousValue: updated.currentLevel + recipeIngredient.quantity,
                     newValue: updated.currentLevel,

@@ -45,7 +45,8 @@ export const createRecipe = catchAsync(async (req: Request, res: Response) => {
         description,
         price,
         ingredients,
-        machineId
+        machineId,
+        
     });
  await ingredient.findByIdAndUpdate(ingredients.ingredientId, { $addToSet: { recipeId: recipe._id } });
     await AuditLog.create({

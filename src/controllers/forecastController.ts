@@ -52,26 +52,7 @@ export const getLowStockWarnings = catchAsync(async (req: Request, res: Response
     }
 });
 
-// Get ingredient consumption forecast for a recipe
-export const getIngredientConsumptionForecast = catchAsync(async (req: Request, res: Response) => {
-    const { machineId, recipeId } = req.params;
-    const { projectedCups } = req.body;
 
-    if (!machineId || !recipeId) {
-        return sendError(res, "Machine ID and Recipe ID are required", 400);
-    }
-
-    if (!projectedCups || projectedCups <= 0) {
-        return sendError(res, "Projected cups must be a positive number", 400);
-    }
-
-    try {
-        const result = await forecastService.getIngredientConsumptionForecast(machineId, recipeId, projectedCups);
-        sendSuccess(res, "Ingredient consumption forecast calculated successfully", result, 200);
-    } catch (error: any) {
-        return sendError(res, error.message, 400);
-    }
-});
 
 // Get forecast summary for all machines
 export const getAllMachinesForecast = catchAsync(async (req: Request, res: Response) => {

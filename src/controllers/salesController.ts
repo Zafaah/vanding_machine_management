@@ -38,39 +38,31 @@ export const processSKUSale = catchAsync(async (req: Request, res: Response) => 
 
 // Process Coffee Sale
 export const processCoffeeSale = catchAsync(async (req: Request, res: Response) => {
-    const { machineId, recipeId, paymentMethod = 'CASH', customerId } = req.body;
+    const { machineId, recipeId, paymentMethod = 'CASH'} = req.body;
 
     if (!machineId || !recipeId) {
         return sendError(res, "machineId and recipeId are required", 400);
     }
+    const result = await salesService.processCoffeeSale(machineId, recipeId, paymentMethod);
+    sendSuccess(res, "Coffee sale processed successfully", result, 200);
 
-    try {
-        const result = await salesService.processCoffeeSale(machineId, recipeId, paymentMethod, customerId);
-        sendSuccess(res, "Coffee sale processed successfully", result, 200);
-    } catch (error: any) {
-        return sendError(res, error.message, 400);
-    }
 });
 
 // Get all sales with pagination
 export const getAllSales = catchAsync(async (req: Request, res: Response) => {
-    try {
-        const sales = await salesService.getAllSales(req.query);
+    const sales = await salesService.getAllSales(req.query);
 
-        // Populate references
-        const populatedSales = await Sales.populate(sales.results, [
-            { path: 'machineId', select: 'name type location' },
-            { path: 'items.skuId', select: 'productId name price' },
-            { path: 'items.canisterId', select: 'name capacity currentLevel' }
-        ]);
-
-        sendSuccess(res, "Sales retrieved successfully", {
+    // Populate references
+    const populatedSales = await Sales.populate(sales.results, [
+        { path: 'machineId', select: 'name type location' },
+        { path: 'items.skuId', select: 'productId name price' },
+        { path: 'items.canisterId', select: 'name capacity currentLevel' }
+    ]);
+    sendSuccess(res, "Sales retrieved successfully", {
             ...sales,
             results: populatedSales
         });
-    } catch (error: any) {
-        return sendError(res, error.message, 400);
-    }
+   
 });
 
 // Get sales by machine
@@ -78,10 +70,10 @@ export const getSalesByMachine = catchAsync(async (req: Request, res: Response) 
     const { machineId } = req.params;
     const { startDate, endDate, limit = 50 } = req.query;
 
-    try {
+    
         const sales = await salesService.getSalesByMachine(machineId, { startDate, endDate, limit });
 
-        // Populate references
+            
         const populatedSales = await Sales.populate(sales, [
             { path: 'machineId', select: 'name type location' },
             { path: 'items.skuId', select: 'productId name price' },
@@ -89,19 +81,15 @@ export const getSalesByMachine = catchAsync(async (req: Request, res: Response) 
         ]);
 
         sendSuccess(res, "Machine sales retrieved successfully", populatedSales);
-    } catch (error: any) {
-        return sendError(res, error.message, 400);
-    }
+    
 });
 
 // Get sales summary/analytics
 export const getSalesSummary = catchAsync(async (req: Request, res: Response) => {
-    try {
+    
         const summary = await salesService.getSalesSummary(req.query);
         sendSuccess(res, "Sales summary retrieved successfully", summary);
-    } catch (error: any) {
-        return sendError(res, error.message, 400);
-    }
+    
 });
 
 // Refund a sale
@@ -109,15 +97,13 @@ export const refundSale = catchAsync(async (req: Request, res: Response) => {
     const { transactionId } = req.params;
     const { reason } = req.body;
 
-    try {
+    
         await salesService.refundSale(transactionId, reason);
         sendSuccess(res, "Sale refunded successfully", null);
-    } catch (error: any) {
-        return sendError(res, error.message, 400);
-    }
+    
 });
 
-// Calculate coffee availability for a given machine and recipe
+
 export const calculateCoffeeAvailability = catchAsync(async (req: Request, res: Response) => {
     const { machineId, recipeId } = req.params;
 
@@ -125,10 +111,8 @@ export const calculateCoffeeAvailability = catchAsync(async (req: Request, res: 
         return sendError(res, "Machine ID and Recipe ID are required", 400);
     }
 
-    try {
+    
         const result = await salesService.calculateCoffeeAvailability(machineId, recipeId);
         sendSuccess(res, "Coffee availability calculated successfully", result, 200);
-    } catch (error: any) {
-        return sendError(res, error.message, 400);
-    }
+    
 });

@@ -4,14 +4,10 @@ import Recipe from "../models/recipe";
 import Ingredients from "../models/ingredient";
 import AuditLog from "../models/auditLOg";
 
-/**
- * Forecast Service - Handles coffee availability and forecasting logic
- * Separated from sales service for better code organization
- */
+
 
 // Calculate coffee availability for a given machine and recipe
 export const calculateCoffeeAvailability = async (machineId: string, recipeId: string) => {
-    // Validate machine exists and is coffee type
     const machine = await VendingMachine.findById(machineId);
     if (!machine) {
         throw new Error("Machine not found");
@@ -292,46 +288,6 @@ export const getLowStockWarnings = async (machineId: string, thresholdPercentage
     };
 };
 
-// Get ingredient consumption forecast for a recipe
-export const getIngredientConsumptionForecast = async (machineId: string, recipeId: string, projectedCups: number) => {
-    // Get the basic availability first
-    const availability = await calculateCoffeeAvailability(machineId, recipeId);
-    
-    if (availability.isOutOfStock) {
-        throw new Error("Recipe is currently out of stock");
-    }
-
-    if (projectedCups > availability.maxCupsPossible) {
-        throw new Error(`Cannot make ${projectedCups} cups. Maximum possible: ${availability.maxCupsPossible}`);
-    }
-
-    // Calculate projected consumption
-    const projectedConsumption = availability.ingredientAvailability.map(ingredient => ({
-        ingredientId: ingredient.ingredientId,
-        ingredientName: ingredient.ingredientName,
-        currentLevel: ingredient.currentLevel,
-        requiredPerCup: ingredient.requiredQuantity,
-        projectedConsumption: ingredient.requiredQuantity * projectedCups,
-        remainingAfterConsumption: ingredient.currentLevel - (ingredient.requiredQuantity * projectedCups),
-        canisterId: ingredient.canisterId,
-        canisterCapacity: ingredient.canisterCapacity
-    }));
-
-    return {
-        machineId: availability.machineId,
-        machineName: availability.machineName,
-        recipeId: availability.recipeId,
-        recipeName: availability.recipeName,
-        projectedCups,
-        currentAvailability: availability.maxCupsPossible,
-        projectedConsumption,
-        summary: {
-            totalIngredients: projectedConsumption.length,
-            sufficientIngredients: projectedConsumption.filter(ing => ing.remainingAfterConsumption >= 0).length,
-            insufficientIngredients: projectedConsumption.filter(ing => ing.remainingAfterConsumption < 0).length
-        }
-    };
-};
 
 // Get forecast summary for all machines
 export const getAllMachinesForecast = async () => {
