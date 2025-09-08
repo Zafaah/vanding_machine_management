@@ -1,0 +1,400 @@
+openapi: 3.0.3
+info:
+  title: Vending Machines API
+  version: 1.0.0
+  description: API for managing vending machines, inventory, recipes, and sales.
+servers:
+  - url: http://localhost
+    description: Local via Caddy (prefix /api)
+  - url: http://localhost:8000
+    description: Direct app (no proxy; useful without Caddy)
+paths:
+  /api/vending:
+    get:
+      summary: List vending machines
+      responses:
+        '200': { description: OK }
+    post:
+      summary: Create vending machine
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, location, type]
+              properties:
+                name: { type: string }
+                location: { type: string }
+                type: { type: string, enum: [snack, drink, coffee, combo] }
+      responses:
+        '201': { description: Created }
+  /api/vending/{id}:
+    get:
+      summary: Get vending machine
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+        '404': { description: Not Found }
+    put:
+      summary: Update vending machine
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: OK }
+    delete:
+      summary: Delete vending machine
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+
+  /api/ingredients:
+    get: { summary: List ingredients, responses: { '200': { description: OK } } }
+    post:
+      summary: Create ingredient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ingredientId, name, unitOfMeasure]
+              properties:
+                ingredientId: { type: string }
+                name: { type: string }
+                unitOfMeasure: { type: string, enum: [g, ml, unit] }
+                canisterId: { type: string, description: Optional auto-link }
+      responses:
+        '201': { description: Created }
+  /api/ingredients/{id}:
+    get: { summary: Get ingredient, parameters: [ { in: path, name: id, required: true, schema: { type: string } } ], responses: { '200': { description: OK } } }
+    put: { summary: Update ingredient, parameters: [ { in: path, name: id, required: true, schema: { type: string } } ], requestBody: { required: true, content: { application/json: { schema: { type: object } } } }, responses: { '200': { description: OK } } }
+    delete: { summary: Delete ingredient, parameters: [ { in: path, name: id, required: true, schema: { type: string } } ], responses: { '200': { description: OK } } }
+
+  /api/recipes:
+    get: { summary: List recipes, responses: { '200': { description: OK } } }
+    post:
+      summary: Create recipe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [recipeId, name, price, ingredients, machineId]
+              properties:
+                recipeId: { type: string }
+                name: { type: string }
+                description: { type: string }
+                price: { type: number }
+                machineId: { type: string }
+                ingredients:
+                  type: array
+                  items:
+                    type: object
+                    required: [ingredientId, quantity, unit]
+                    properties:
+                      ingredientId: { type: string }
+                      quantity: { type: number }
+                      unit: { type: string, enum: [g, ml] }
+      responses:
+        '201': { description: Created }
+  /api/recipes/{id}:
+    get: { summary: Get recipe, parameters: [ { in: path, name: id, required: true, schema: { type: string } } ], responses: { '200': { description: OK } } }
+    put: { summary: Update recipe, parameters: [ { in: path, name: id, required: true, schema: { type: string } } ], requestBody: { required: true, content: { application/json: { schema: { type: object } } } }, responses: { '200': { description: OK } } }
+    delete: { summary: Delete recipe, parameters: [ { in: path, name: id, required: true, schema: { type: string } } ], responses: { '200': { description: OK } } }
+  /api/recipes/machine/{machineId}:
+    get:
+      summary: Get recipes for a machine
+      parameters:
+        - in: path
+          name: machineId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+
+  /api/conisters:
+    get: { summary: List canisters, responses: { '200': { description: OK } } }
+    post:
+      summary: Create canister
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, machineId, capacity]
+              properties:
+                name: { type: string }
+                machineId: { type: string }
+                capacity: { type: number }
+                currentLevel: { type: number }
+                ingredientId: { type: string }
+      responses:
+        '201': { description: Created }
+  /api/conisters/{id}:
+    get: { summary: Get canister, parameters: [ { in: path, name: id, required: true, schema: { type: string } } ], responses: { '200': { description: OK } } }
+    put: { summary: Update canister, parameters: [ { in: path, name: id, required: true, schema: { type: string } } ], requestBody: { required: true, content: { application/json: { schema: { type: object } } } }, responses: { '200': { description: OK } } }
+    delete: { summary: Delete canister, parameters: [ { in: path, name: id, required: true, schema: { type: string } } ], responses: { '200': { description: OK } } }
+  /api/conisters/{id}/assign:
+    post:
+      summary: Assign ingredient to canister
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ingredientId]
+              properties:
+                ingredientId: { type: string }
+      responses:
+        '200': { description: OK }
+  /api/conisters/{id}/refill:
+    post:
+      summary: Refill canister
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refillAmount]
+              properties:
+                refillAmount: { type: number }
+      responses:
+        '200': { description: OK }
+
+  /api/slot-inventory:
+    get: { summary: List inventory, responses: { '200': { description: OK } } }
+    post:
+      summary: Set slot inventory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [machineId, trayId, slotId, skuId]
+              properties:
+                machineId: { type: string }
+                trayId: { type: string }
+                slotId: { type: string }
+                skuId: { type: string }
+                quantityOnHand: { type: number }
+      responses:
+        '200': { description: OK }
+  /api/slot-inventory/sell:
+    post:
+      summary: Sell from slot (atomic decrement)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [machineId, trayId, slotId, skuId, quantity]
+              properties:
+                machineId: { type: string }
+                trayId: { type: string }
+                slotId: { type: string }
+                skuId: { type: string }
+                quantity: { type: integer, minimum: 1 }
+      responses:
+        '200': { description: OK }
+  /api/slot-inventory/machine/{machineId}:
+    get:
+      summary: Inventory by machine
+      parameters:
+        - in: path
+          name: machineId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+  /api/slot-inventory/low-stock:
+    get:
+      summary: Low stock items
+      parameters:
+        - in: query
+          name: threshold
+          schema: { type: integer, default: 5 }
+      responses:
+        '200': { description: OK }
+  /api/slot-inventory/{inventoryId}:
+    put:
+      summary: Update inventory quantity
+      parameters:
+        - in: path
+          name: inventoryId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quantityOnHand]
+              properties:
+                quantityOnHand: { type: number, minimum: 0 }
+      responses:
+        '200': { description: OK }
+
+  /api/sales/check-inventory:
+    post:
+      summary: Check inventory availability for SKUs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [machineId, items]
+              properties:
+                machineId: { type: string }
+                items:
+                  type: array
+                  items:
+                    type: object
+                    required: [slotId, skuId, quantity, trayId]
+                    properties:
+                      slotId: { type: string }
+                      skuId: { type: string }
+                      trayId: { type: string }
+                      quantity: { type: integer, minimum: 1 }
+      responses:
+        '200': { description: OK }
+  /api/sales/sku:
+    post:
+      summary: Process SKU sale
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [machineId, items]
+              properties:
+                machineId: { type: string }
+                paymentMethod: { type: string, enum: [CASH, CARD, WALLET], default: CASH }
+                customerId: { type: string }
+                items:
+                  type: array
+                  items:
+                    type: object
+                    required: [slotId, skuId, quantity, trayId]
+                    properties:
+                      slotId: { type: string }
+                      skuId: { type: string }
+                      trayId: { type: string }
+                      quantity: { type: integer, minimum: 1 }
+      responses:
+        '200': { description: OK }
+  /api/sales/coffee:
+    post:
+      summary: Process coffee sale (consume canisters)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [machineId, recipeId]
+              properties:
+                machineId: { type: string }
+                recipeId: { type: string }
+                paymentMethod: { type: string, enum: [CASH, CARD, WALLET], default: CASH }
+      responses:
+        '200': { description: OK }
+  /api/sales:
+    get: { summary: List sales (paginated), responses: { '200': { description: OK } } }
+  /api/sales/machine/{machineId}:
+    get:
+      summary: Sales by machine
+      parameters:
+        - in: path
+          name: machineId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+  /api/sales/summary:
+    get: { summary: Sales summary, responses: { '200': { description: OK } } }
+  /api/sales/refund/{transactionId}:
+    post:
+      summary: Refund a sale
+      parameters:
+        - in: path
+          name: transactionId
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+      responses:
+        '200': { description: OK }
+
+  /api/forecast/coffee-availability/{machineId}/{recipeId}:
+    get:
+      summary: Calculate coffee availability for recipe
+      parameters:
+        - in: path
+          name: machineId
+          required: true
+          schema: { type: string }
+        - in: path
+          name: recipeId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+  /api/forecast/machine/{machineId}:
+    get:
+      summary: Forecast per recipe for a machine
+      parameters:
+        - in: path
+          name: machineId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+  /api/forecast/low-stock/{machineId}:
+    get:
+      summary: Low stock warnings for machine canisters
+      parameters:
+        - in: path
+          name: machineId
+          required: true
+          schema: { type: string }
+        - in: query
+          name: threshold
+          schema: { type: integer, default: 20 }
+      responses:
+        '200': { description: OK }
+  /api/forecast/all-machines:
+    get: { summary: Forecast summary for all machines, responses: { '200': { description: OK } } }
+
+components: {}
+
